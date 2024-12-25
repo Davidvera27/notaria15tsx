@@ -17,11 +17,10 @@ import {
   Tag,
   RadioChangeEvent,
   Modal,
-  Dropdown,
-  Menu,
   Switch,
   InputNumber,
 } from "antd";
+import type { ColumnsType } from "antd/es/table";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { Header } from "../Header/Header";
 
@@ -41,7 +40,7 @@ interface TableData {
 }
 
 export const CaseRentsForm: React.FC = () => {
-  const [componentSize, setComponentSize] = useState<"small" | "default" | "large">("default");
+  const [componentSize, setComponentSize] = useState<"small" | "middle" | "large">("middle");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [pageSize, setPageSize] = useState(10);
@@ -62,18 +61,14 @@ export const CaseRentsForm: React.FC = () => {
     setIsModalVisible(false);
   };
 
-  const tableColumns: Array<{
-    title: string;
-    dataIndex: string;
-    key: string;
-    fixed?: "left" | "right";
-    width?: number;
-    sorter?: (a: TableData, b: TableData) => number;
-    filters?: { text: string; value: string }[];
-    onFilter?: (value: string, record: TableData) => boolean;
-    render?: (text: string) => JSX.Element;
-  }> = [
-    { title: "No.", dataIndex: "no", key: "no", fixed: "left", width: 50 },
+  const tableColumns: ColumnsType<TableData> = [
+    {
+      title: "No.",
+      dataIndex: "no",
+      key: "no",
+      fixed: "left",
+      width: 50,
+    },
     {
       title: "Fecha de creación",
       dataIndex: "creationDate",
@@ -86,8 +81,16 @@ export const CaseRentsForm: React.FC = () => {
       key: "escritura",
       sorter: (a, b) => a.escritura.localeCompare(b.escritura),
     },
-    { title: "Fecha del documento", dataIndex: "documentDate", key: "documentDate" },
-    { title: "Radicado", dataIndex: "radicado", key: "radicado" },
+    {
+      title: "Fecha del documento",
+      dataIndex: "documentDate",
+      key: "documentDate",
+    },
+    {
+      title: "Radicado",
+      dataIndex: "radicado",
+      key: "radicado",
+    },
     {
       title: "Protocolista",
       dataIndex: "protocolista",
@@ -97,18 +100,17 @@ export const CaseRentsForm: React.FC = () => {
         { text: "DAVID POSADA HINCAPIE", value: "DAVID POSADA HINCAPIE" },
         { text: "GLORIA MARY HINCAPIE MONTOYA", value: "GLORIA MARY HINCAPIE MONTOYA" },
       ],
-      onFilter: (value: string, record: TableData) => record.protocolista === value,
+
     },
     {
       title: "Observaciones",
       dataIndex: "observaciones",
       key: "observaciones",
-      render: (text) =>
+      render: (text: string) =>
         text ? <Tag color="red">{text}</Tag> : <Text type="secondary">Sin observaciones</Text>,
     },
     {
       title: "Acciones",
-      dataIndex: "acciones",
       key: "acciones",
       fixed: "right",
       width: 100,
@@ -157,13 +159,8 @@ export const CaseRentsForm: React.FC = () => {
             <Breadcrumb.Item>Radicados de Rentas</Breadcrumb.Item>
           </Breadcrumb>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {/* Primera tarjeta */}
             <Card title={<Title level={5}>Crear nuevo caso</Title>}>
-              <Form
-                layout="vertical"
-                size={componentSize}
-                style={{ maxWidth: "100%" }}
-              >
+              <Form layout="vertical" size={componentSize}>
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item
@@ -234,17 +231,10 @@ export const CaseRentsForm: React.FC = () => {
               </Form>
             </Card>
 
-            {/* Segunda tarjeta */}
             <Card title={<Title level={5}>Información de Radicados de Rentas</Title>}>
-              <Table
-                columns={tableColumns}
-                dataSource={tableData}
-                pagination={{ pageSize, total: tableData.length }}
-                scroll={{ x: 1300 }}
-              />
+              <Table columns={tableColumns} dataSource={tableData} pagination={{ pageSize }} />
             </Card>
 
-            {/* Tercera tarjeta */}
             <Card title={<Title level={5}>Configuración</Title>}>
               <Text>Número de casos: {tableData.length}</Text>
               <div style={{ marginTop: "16px" }}>
@@ -255,7 +245,7 @@ export const CaseRentsForm: React.FC = () => {
                   style={{ marginLeft: "8px" }}
                 >
                   <Radio value="small">Pequeño</Radio>
-                  <Radio value="default">Mediano</Radio>
+                  <Radio value="middle">Mediano</Radio>
                   <Radio value="large">Grande</Radio>
                 </Radio.Group>
               </div>
