@@ -5,6 +5,8 @@ import { Home } from "./components/Home/Home";
 import { Login } from "./components/Login/Login";
 import { CaseRentsForm } from "./components/CaseRentsForm/CaseRentsForm";
 import { Protocolist } from "./components/Protocolist/Protocolist";
+import { CaseRentsFinished } from "./components/CaseRentsFinished/CaseRentsFinished";
+
 
 
 export const App = () => {
@@ -45,6 +47,7 @@ export const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/CaseRentsForm" element={<CaseRentsForm />} />
           <Route path="/Protocolist" element={<Protocolist />} />
+          <Route path="/CaseRentsFinished" element={<CaseRentsFinished />} />
         </Routes>
       </Router>
     </ConfigProvider>
