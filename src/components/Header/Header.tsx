@@ -57,7 +57,7 @@ export const Header = () => {
         <Flex gap="small" style={{ alignItems: "center" }}>
           <Avatar icon={<UserOutlined />} />
           <Typography.Paragraph style={{ color: "#fff", margin: 0 }}>
-            Andrea Salazar
+            David Restrepo Vera
           </Typography.Paragraph>
         </Flex>
         <Tooltip title="Cerrar sesión">
