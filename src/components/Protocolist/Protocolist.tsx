@@ -97,43 +97,6 @@ export const Protocolist: React.FC = () => {
           </Breadcrumb>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {/* Primera tarjeta */}
-            <Card title={<Title level={5}>Configuración</Title>}>
-              <Text>Número de protocolistas: {tableData.length}</Text>
-              <div style={{ marginTop: "16px" }}>
-                <Text>Tamaño del formulario:</Text>
-                <Radio.Group
-                  onChange={handleFormLayoutChange}
-                  value={componentSize}
-                  style={{ marginLeft: "8px" }}
-                >
-                  <Radio value="small">Pequeño</Radio>
-                  <Radio value="default">Mediano</Radio>
-                  <Radio value="large">Grande</Radio>
-                </Radio.Group>
-              </div>
-              <div style={{ marginTop: "16px" }}>
-                <Text>Paginación:</Text>
-                <InputNumber
-                  min={5}
-                  max={50}
-                  value={pageSize}
-                  onChange={(value) => setPageSize(value || 10)}
-                  style={{ marginLeft: "8px" }}
-                />
-              </div>
-            </Card>
-
-            {/* Segunda tarjeta */}
-            <Card title={<Title level={5}>Protocolistas</Title>}>
-              <Table
-                columns={tableColumns}
-                dataSource={tableData}
-                pagination={{ pageSize, total: tableData.length }}
-                scroll={{ x: 1000 }}
-              />
-            </Card>
-
-            {/* Tercera tarjeta */}
             <Card title={<Title level={5}>Crear nuevo protocolista</Title>}>
             <Form layout="vertical" size={componentSize}>
                 <Row gutter={16}>
@@ -182,6 +145,44 @@ export const Protocolist: React.FC = () => {
                 </Form.Item>
               </Form>
             </Card>
+
+            {/* Segunda tarjeta */}
+            <Card title={<Title level={5}>Protocolistas</Title>}>
+              <Table
+                columns={tableColumns}
+                dataSource={tableData}
+                pagination={{ pageSize, total: tableData.length }}
+                scroll={{ x: 1000 }}
+              />
+            </Card>
+
+            {/* Tercera tarjeta */}
+            <Card title={<Title level={5}>Configuración</Title>}>
+              <Text>Número de protocolistas: {tableData.length}</Text>
+              <div style={{ marginTop: "16px" }}>
+                <Text>Tamaño del formulario:</Text>
+                <Radio.Group
+                  onChange={handleFormLayoutChange}
+                  value={componentSize}
+                  style={{ marginLeft: "8px" }}
+                >
+                  <Radio value="small">Pequeño</Radio>
+                  <Radio value="default">Mediano</Radio>
+                  <Radio value="large">Grande</Radio>
+                </Radio.Group>
+              </div>
+              <div style={{ marginTop: "16px" }}>
+                <Text>Paginación:</Text>
+                <InputNumber
+                  min={5}
+                  max={50}
+                  value={pageSize}
+                  onChange={(value) => setPageSize(value || 10)}
+                  style={{ marginLeft: "8px" }}
+                />
+              </div>
+            </Card>
+
           </div>
         </Content>
       </Layout>
