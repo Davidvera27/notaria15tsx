@@ -15,6 +15,12 @@ import {
   Row,
   Col,
   Tag,
+  RadioChangeEvent,
+  Modal,
+  Dropdown,
+  Menu,
+  Switch,
+  InputNumber,
 } from "antd";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { Header } from "../Header/Header";
@@ -35,25 +41,50 @@ interface TableData {
 }
 
 export const CaseRentsForm: React.FC = () => {
-  const [componentSize, setComponentSize] = useState<string>("default");
+  const [componentSize, setComponentSize] = useState<"small" | "default" | "large">("default");
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [pageSize, setPageSize] = useState(10);
 
-  const handleFormLayoutChange = (e: any) => {
+  const handleFormLayoutChange = (e: RadioChangeEvent) => {
     setComponentSize(e.target.value);
   };
 
-  const tableColumns = [
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
+  const showColumnConfig = () => {
+    setIsModalVisible(true);
+  };
+
+  const handleModalCancel = () => {
+    setIsModalVisible(false);
+  };
+
+  const tableColumns: Array<{
+    title: string;
+    dataIndex: string;
+    key: string;
+    fixed?: "left" | "right";
+    width?: number;
+    sorter?: (a: TableData, b: TableData) => number;
+    filters?: { text: string; value: string }[];
+    onFilter?: (value: string, record: TableData) => boolean;
+    render?: (text: string) => JSX.Element;
+  }> = [
     { title: "No.", dataIndex: "no", key: "no", fixed: "left", width: 50 },
     {
       title: "Fecha de creación",
       dataIndex: "creationDate",
       key: "creationDate",
-      sorter: (a: TableData, b: TableData) => a.creationDate.localeCompare(b.creationDate),
+      sorter: (a, b) => a.creationDate.localeCompare(b.creationDate),
     },
     {
       title: "Escritura",
       dataIndex: "escritura",
       key: "escritura",
-      sorter: (a: TableData, b: TableData) => a.escritura.localeCompare(b.escritura),
+      sorter: (a, b) => a.escritura.localeCompare(b.escritura),
     },
     { title: "Fecha del documento", dataIndex: "documentDate", key: "documentDate" },
     { title: "Radicado", dataIndex: "radicado", key: "radicado" },
@@ -72,11 +103,12 @@ export const CaseRentsForm: React.FC = () => {
       title: "Observaciones",
       dataIndex: "observaciones",
       key: "observaciones",
-      render: (text: string) =>
+      render: (text) =>
         text ? <Tag color="red">{text}</Tag> : <Text type="secondary">Sin observaciones</Text>,
     },
     {
       title: "Acciones",
+      dataIndex: "acciones",
       key: "acciones",
       fixed: "right",
       width: 100,
@@ -207,7 +239,7 @@ export const CaseRentsForm: React.FC = () => {
               <Table
                 columns={tableColumns}
                 dataSource={tableData}
-                pagination={{ pageSize: 10, total: tableData.length }}
+                pagination={{ pageSize, total: tableData.length }}
                 scroll={{ x: 1300 }}
               />
             </Card>
@@ -227,8 +259,39 @@ export const CaseRentsForm: React.FC = () => {
                   <Radio value="large">Grande</Radio>
                 </Radio.Group>
               </div>
+              <div style={{ marginTop: "16px" }}>
+                <Text>Paginación:</Text>
+                <InputNumber
+                  min={5}
+                  max={50}
+                  value={pageSize}
+                  onChange={(value) => setPageSize(value || 10)}
+                  style={{ marginLeft: "8px" }}
+                />
+              </div>
+              <div style={{ marginTop: "16px" }}>
+                <Switch
+                  checked={isDarkMode}
+                  onChange={toggleDarkMode}
+                  checkedChildren="Modo Oscuro"
+                  unCheckedChildren="Modo Claro"
+                />
+              </div>
+              <div style={{ marginTop: "16px" }}>
+                <Button type="primary" onClick={showColumnConfig}>
+                  Configurar Columnas
+                </Button>
+              </div>
             </Card>
           </div>
+          <Modal
+            title="Configuración de Columnas"
+            visible={isModalVisible}
+            onCancel={handleModalCancel}
+            footer={null}
+          >
+            <Text>Opciones de columnas próximamente...</Text>
+          </Modal>
         </Content>
       </Layout>
     </Layout>
