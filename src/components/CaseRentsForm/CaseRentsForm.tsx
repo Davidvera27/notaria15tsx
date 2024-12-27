@@ -44,6 +44,7 @@ export const CaseRentsForm: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [data, setData] = useState<TableData[]>([]);
+  const [editingCase, setEditingCase] = useState<TableData | null>(null);
 
   const handleFormLayoutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setComponentSize(e.target.value as "small" | "middle" | "large");
@@ -61,6 +62,8 @@ export const CaseRentsForm: React.FC = () => {
     setIsModalVisible(false);
   };
 
+  <Modal visible={isModalVisible} onCancel={handleModalCancel}></Modal>
+
   const fetchData = async () => {
     try {
       const response = await axios.get("http://localhost:5000/api/case-rents");
@@ -72,31 +75,12 @@ export const CaseRentsForm: React.FC = () => {
   };
 
   const addCaseRent = async (values: TableData) => {
-    // Validations before sending data to the server
-    if (!/^[0-9]+$/.test(values.escritura)) {
-      return message.error("El número de escritura solo debe contener caracteres numéricos.");
-    }
-
-    if (values.radicado.length < 8 || values.radicado.length > 20) {
-      return message.error("El radicado debe tener entre 8 y 20 caracteres.");
-    }
-
-    if (new Date(values.document_date) > new Date(values.creation_date)) {
-      return message.error("La fecha del documento no puede ser posterior a la fecha de creación.");
-    }
-
-    const currentYear = new Date().getFullYear();
-    const creationYear = new Date(values.creation_date).getFullYear();
-    if (creationYear > currentYear || creationYear < currentYear - 10) {
-      return message.error("La fecha de creación debe estar dentro del rango permitido de 10 años.");
-    }
-
     try {
       await axios.post("http://localhost:5000/api/case-rents", values);
       fetchData();
       message.success("Caso agregado correctamente");
-    } catch (error: any) {
-      if (error.response && error.response.data.error) {
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response && error.response.data.error) {
         message.error(error.response.data.error);
       } else {
         console.error("Error adding case:", error);
@@ -116,15 +100,24 @@ export const CaseRentsForm: React.FC = () => {
     }
   };
 
-  const editCaseRent = async (record: TableData) => {
+  const openEditModal = (record: TableData) => {
+    setEditingCase(record);
+    setIsModalVisible(true);
+  };
+
+  const updateCaseRent = async (values: TableData) => {
     try {
-      const updatedRecord = { ...record, observaciones: "Actualizado" }; // Ejemplo de actualización
-      await axios.put(`http://localhost:5000/api/case-rents/${record.id}`, updatedRecord);
+      await axios.put(`http://localhost:5000/api/case-rents/${values.id}`, values);
       fetchData();
       message.success("Caso actualizado correctamente");
-    } catch (error) {
-      console.error("Error updating case:", error);
-      message.error("Error al actualizar el caso");
+      setIsModalVisible(false);
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response && error.response.data.error) {
+        message.error(error.response.data.error);
+      } else {
+        console.error("Error updating case:", error);
+        message.error("Error al actualizar el caso");
+      }
     }
   };
 
@@ -177,9 +170,9 @@ export const CaseRentsForm: React.FC = () => {
       key: "acciones",
       fixed: "right" as const,
       width: 150,
-      render: (_: any, record: TableData) => (
+      render: (_: unknown, record: TableData) => (
         <Space>
-          <Button type="link" onClick={() => editCaseRent(record)}>
+          <Button type="link" onClick={() => openEditModal(record)}>
             Editar
           </Button>
           <Button type="link" onClick={() => deleteCaseRent(record.id)}>
@@ -190,13 +183,17 @@ export const CaseRentsForm: React.FC = () => {
     },
   ];
 
-  const onFinish = (values: any) => {
+  const onFinish = (values: Record<string, any>) => {
     const formattedValues: TableData = {
       ...values,
-      creation_date: values.creation_date.format("YYYY-MM-DD"),
-      document_date: values.document_date.format("YYYY-MM-DD"),
+      creation_date: values.creation_date?.format("YYYY-MM-DD") || "",
+      document_date: values.document_date?.format("YYYY-MM-DD") || "",
     };
-    addCaseRent(formattedValues);
+    if (editingCase) {
+      updateCaseRent({ ...editingCase, ...formattedValues });
+    } else {
+      addCaseRent(formattedValues);
+    }
   };
 
   return (
@@ -212,8 +209,152 @@ export const CaseRentsForm: React.FC = () => {
             <Breadcrumb.Item>Radicados de Rentas</Breadcrumb.Item>
           </Breadcrumb>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <Card title={<Title level={5}>Crear nuevo caso</Title>}>
-              <Form layout="vertical" size={componentSize} onFinish={onFinish}>
+            <Card title={<Title level={5}>Crear o Editar Caso</Title>}>
+              <Form
+                layout="vertical"
+                size={componentSize}
+                onFinish={onFinish}
+                initialValues={editingCase || {}}
+              >
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Fecha"
+                      name="creation_date"
+                      rules={[{ required: true, message: "Seleccione una fecha" }]}
+                    >
+                      <DatePicker style={{ width: "100%" }} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Fecha del Documento"
+                      name="document_date"
+                      rules={[{ required: true, message: "Seleccione la fecha del documento" }]}
+                    >
+                      <DatePicker style={{ width: "100%" }} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Escritura"
+                      name="escritura"
+                      rules={[{ required: true, message: "Ingrese el número de escritura" }]}
+                    >
+                      <Input placeholder="Ej: 12345" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Radicado"
+                      name="radicado"
+                      rules={[{ required: true, message: "Ingrese el radicado" }]}
+                    >
+                      <Input placeholder="Ej: 20240101234432" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Protocolista"
+                      name="protocolista"
+                      rules={[{ required: true, message: "Seleccione un protocolista" }]}
+                    >
+                      <Select placeholder="Seleccione un protocolista">
+                        <Option value="Protocolista 1">Protocolista 1</Option>
+                        <Option value="Protocolista 2">Protocolista 2</Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Observaciones" name="observaciones">
+                      <Input.TextArea placeholder="Observaciones adicionales (opcional)" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Form.Item>
+                  <Space>
+                    <Button type="primary" htmlType="submit">
+                      {editingCase ? "Actualizar Caso" : "Agregar Caso"}
+                    </Button>
+                    {editingCase && (
+                      <Button
+                        onClick={() => {
+                          setEditingCase(null);
+                          setIsModalVisible(false);
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                    )}
+                  </Space>
+                </Form.Item>
+              </Form>
+            </Card>
+
+            <Card title={<Title level={5}>Información de Radicados de Rentas</Title>}>
+              <Table columns={tableColumns} dataSource={data} pagination={{ pageSize }} rowKey="id" />
+            </Card>
+
+            <Card title={<Title level={5}>Configuración</Title>}>
+              <div style={{ marginTop: "16px" }}>
+                <Text>Tamaño del formulario:</Text>
+                <Radio.Group
+                  onChange={handleFormLayoutChange}
+                  value={componentSize}
+                  style={{ marginLeft: "8px" }}
+                >
+                  <Radio value="small">Pequeño</Radio>
+                  <Radio value="middle">Mediano</Radio>
+                  <Radio value="large">Grande</Radio>
+                </Radio.Group>
+              </div>
+              <div style={{ marginTop: "16px" }}>
+                <Text>Paginación:</Text>
+                <InputNumber
+                  min={5}
+                  max={50}
+                  value={pageSize}
+                  onChange={(value) => setPageSize(value || 10)}
+                  style={{ marginLeft: "8px" }}
+                />
+              </div>
+              <div style={{ marginTop: "16px" }}>
+                <Switch
+                  checked={isDarkMode}
+                  onChange={toggleDarkMode}
+                  checkedChildren="Modo Oscuro"
+                  unCheckedChildren="Modo Claro"
+                />
+              </div>
+              <div style={{ marginTop: "16px" }}>
+                <Button type="primary" onClick={showColumnConfig}>
+                  Configurar Columnas
+                </Button>
+              </div>
+            </Card>
+          </div>
+          <Modal
+            title={editingCase ? "Editar Caso" : "Configuración de Columnas"}
+            visible={isModalVisible}
+            onCancel={() => {
+              setIsModalVisible(false);
+              setEditingCase(null);
+            }}
+            footer={null}
+          >
+            {editingCase ? (
+              <Form
+                layout="vertical"
+                initialValues={editingCase}
+                onFinish={onFinish}
+              >
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item
@@ -278,61 +419,13 @@ export const CaseRentsForm: React.FC = () => {
 
                 <Form.Item>
                   <Button type="primary" htmlType="submit">
-                    Agregar
+                    Guardar Cambios
                   </Button>
                 </Form.Item>
               </Form>
-            </Card>
-
-            <Card title={<Title level={5}>Información de Radicados de Rentas</Title>}>
-              <Table columns={tableColumns} dataSource={data} pagination={{ pageSize }} rowKey="id" />
-            </Card>
-
-            <Card title={<Title level={5}>Configuración</Title>}>
-              <div style={{ marginTop: "16px" }}>
-                <Text>Tamaño del formulario:</Text>
-                <Radio.Group
-                  onChange={handleFormLayoutChange}
-                  value={componentSize}
-                  style={{ marginLeft: "8px" }}
-                >
-                  <Radio value="small">Pequeño</Radio>
-                  <Radio value="middle">Mediano</Radio>
-                  <Radio value="large">Grande</Radio>
-                </Radio.Group>
-              </div>
-              <div style={{ marginTop: "16px" }}>
-                <Text>Paginación:</Text>
-                <InputNumber
-                  min={5}
-                  max={50}
-                  value={pageSize}
-                  onChange={(value) => setPageSize(value || 10)}
-                  style={{ marginLeft: "8px" }}
-                />
-              </div>
-              <div style={{ marginTop: "16px" }}>
-                <Switch
-                  checked={isDarkMode}
-                  onChange={toggleDarkMode}
-                  checkedChildren="Modo Oscuro"
-                  unCheckedChildren="Modo Claro"
-                />
-              </div>
-              <div style={{ marginTop: "16px" }}>
-                <Button type="primary" onClick={showColumnConfig}>
-                  Configurar Columnas
-                </Button>
-              </div>
-            </Card>
-          </div>
-          <Modal
-            title="Configuración de Columnas"
-            visible={isModalVisible}
-            onCancel={handleModalCancel}
-            footer={null}
-          >
-            <Text>Opciones de columnas próximamente...</Text>
+            ) : (
+              <Text>Opciones de columnas próximamente...</Text>
+            )}
           </Modal>
         </Content>
       </Layout>
