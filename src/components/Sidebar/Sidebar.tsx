@@ -1,26 +1,30 @@
 import {
   HomeOutlined,
+  DatabaseOutlined,
   UserOutlined,
-  CheckCircleOutlined,
 } from "@ant-design/icons";
 import { Menu } from "antd";
 
 const menuItems = [
-  { key: "1", icon: <HomeOutlined />, label: <a href="/home">Tablero de inicio</a> },
+  { key: "1", icon: <HomeOutlined />, label: <a href="/home">Gestión de Rentas (Inicio)</a> },
   {
     key: "2",
-    icon: <UserOutlined />,
-    label: "Usuarios",
+    icon: <DatabaseOutlined />,
+    label: "Rentas",
     children: [
-      { key: "2.1", label: <a href="/new-user">Nuevo Usuario</a> },
-      { key: "2.2", label: "Nuevo Reporte Clínico" },
-      { key: "2.3", label: <a href="/userlist">Lista de Usiarios</a> },
+      { key: "2.1", label: <a href="/CaseRentsForm">Radicados de Rentas</a> },
+      { key: "2.2", label: <a href="/caseRentsFinished">Casos Finalizados</a> },
     ],
   },
   {
     key: "3",
-    icon: <CheckCircleOutlined />,
-    label: "Gestión de Actividades",
+    icon: <UserOutlined />,
+    label: "Protocolistas",
+    children: [
+      { key: "3.1", label: <a href="/protocolist">Lista de Protocolistas</a> },
+      { key: "3.2", label: "Campo disponible" },
+      { key: "3.3", label: "Campo disponible" },
+    ],
   },
 ];
 

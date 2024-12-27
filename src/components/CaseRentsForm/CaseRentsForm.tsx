@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Breadcrumb,
   Button,
@@ -15,6 +16,10 @@ import {
   Row,
   Col,
   Tag,
+  Modal,
+  Switch,
+  InputNumber,
+  message,
 } from "antd";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { Header } from "../Header/Header";
@@ -23,94 +28,153 @@ const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-interface TableData {
-  key: number;
-  no: number;
-  creationDate: string;
+type TableData = {
+  id: number;
+  creation_date: string;
+  document_date: string;
   escritura: string;
-  documentDate: string;
   radicado: string;
   protocolista: string;
-  observaciones: string;
-}
+  observaciones?: string;
+};
 
 export const CaseRentsForm: React.FC = () => {
-  const [componentSize, setComponentSize] = useState<string>("default");
+  const [componentSize, setComponentSize] = useState<"small" | "middle" | "large">("middle");
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [pageSize, setPageSize] = useState(10);
+  const [data, setData] = useState<TableData[]>([]);
 
-  const handleFormLayoutChange = (e: any) => {
-    setComponentSize(e.target.value);
+  const handleFormLayoutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setComponentSize(e.target.value as "small" | "middle" | "large");
   };
 
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
+  const showColumnConfig = () => {
+    setIsModalVisible(true);
+  };
+
+  const handleModalCancel = () => {
+    setIsModalVisible(false);
+  };
+
+  const fetchData = async () => {
+    try {
+      const response = await axios.get("http://localhost:5000/api/case-rents");
+      setData(response.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      message.error("Error al cargar los datos");
+    }
+  };
+
+  const addCaseRent = async (values: TableData) => {
+    try {
+      await axios.post("http://localhost:5000/api/case-rents", values);
+      fetchData();
+      message.success("Caso agregado correctamente");
+    } catch (error) {
+      console.error("Error adding case:", error);
+      message.error("Error al agregar el caso");
+    }
+  };
+
+  const deleteCaseRent = async (id: number) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/case-rents/${id}`);
+      fetchData();
+      message.success("Caso eliminado correctamente");
+    } catch (error) {
+      console.error("Error deleting case:", error);
+      message.error("Error al eliminar el caso");
+    }
+  };
+
+  const editCaseRent = async (record: TableData) => {
+    try {
+      const updatedRecord = { ...record, observaciones: "Actualizado" }; // Ejemplo de actualización
+      await axios.put(`http://localhost:5000/api/case-rents/${record.id}`, updatedRecord);
+      fetchData();
+      message.success("Caso actualizado correctamente");
+    } catch (error) {
+      console.error("Error updating case:", error);
+      message.error("Error al actualizar el caso");
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   const tableColumns = [
-    { title: "No.", dataIndex: "no", key: "no", fixed: "left", width: 50 },
+    {
+      title: "No.",
+      dataIndex: "id",
+      key: "id",
+      fixed: "left" as const,
+      width: 50,
+    },
     {
       title: "Fecha de creación",
-      dataIndex: "creationDate",
-      key: "creationDate",
-      sorter: (a: TableData, b: TableData) => a.creationDate.localeCompare(b.creationDate),
+      dataIndex: "creation_date",
+      key: "creation_date",
     },
     {
       title: "Escritura",
       dataIndex: "escritura",
       key: "escritura",
-      sorter: (a: TableData, b: TableData) => a.escritura.localeCompare(b.escritura),
     },
-    { title: "Fecha del documento", dataIndex: "documentDate", key: "documentDate" },
-    { title: "Radicado", dataIndex: "radicado", key: "radicado" },
+    {
+      title: "Fecha del documento",
+      dataIndex: "document_date",
+      key: "document_date",
+    },
+    {
+      title: "Radicado",
+      dataIndex: "radicado",
+      key: "radicado",
+    },
     {
       title: "Protocolista",
       dataIndex: "protocolista",
       key: "protocolista",
-      filters: [
-        { text: "MERCEDITAS DIONNE PALACIO LOPEZ", value: "MERCEDITAS DIONNE PALACIO LOPEZ" },
-        { text: "DAVID POSADA HINCAPIE", value: "DAVID POSADA HINCAPIE" },
-        { text: "GLORIA MARY HINCAPIE MONTOYA", value: "GLORIA MARY HINCAPIE MONTOYA" },
-      ],
-      onFilter: (value: string, record: TableData) => record.protocolista === value,
     },
     {
       title: "Observaciones",
       dataIndex: "observaciones",
       key: "observaciones",
-      render: (text: string) =>
+      render: (text: string | undefined) =>
         text ? <Tag color="red">{text}</Tag> : <Text type="secondary">Sin observaciones</Text>,
     },
     {
       title: "Acciones",
       key: "acciones",
-      fixed: "right",
-      width: 100,
-      render: () => (
+      fixed: "right" as const,
+      width: 150,
+      render: (_: any, record: TableData) => (
         <Space>
-          <Button type="link">Editar</Button>
-          <Button type="link">Eliminar</Button>
+          <Button type="link" onClick={() => editCaseRent(record)}>
+            Editar
+          </Button>
+          <Button type="link" onClick={() => deleteCaseRent(record.id)}>
+            Eliminar
+          </Button>
         </Space>
       ),
     },
   ];
 
-  const generateRandomData = (count: number): TableData[] => {
-    const data: TableData[] = [];
-    for (let i = 1; i <= count; i++) {
-      data.push({
-        key: i,
-        no: i,
-        creationDate: `2024-08-30 08:54:${i % 60}`,
-        escritura: Math.floor(8000 + Math.random() * 2000).toString(),
-        documentDate: "02/09/2024",
-        radicado: `202401039${i.toString().padStart(3, "0")}`,
-        protocolista: [
-          "MERCEDITAS DIONNE PALACIO LOPEZ",
-          "DAVID POSADA HINCAPIE",
-          "GLORIA MARY HINCAPIE MONTOYA",
-        ][Math.floor(Math.random() * 3)],
-        observaciones: i % 5 === 0 ? "FALTO 1 FIDEICOMISO POR LIQUIDAR" : "",
-      });
-    }
-    return data;
+  const onFinish = (values: any) => {
+    const formattedValues: TableData = {
+      ...values,
+      creation_date: values.creation_date.format("YYYY-MM-DD"),
+      document_date: values.document_date.format("YYYY-MM-DD"),
+    };
+    addCaseRent(formattedValues);
   };
-
-  const tableData = generateRandomData(100);
 
   return (
     <Layout>
@@ -125,18 +189,13 @@ export const CaseRentsForm: React.FC = () => {
             <Breadcrumb.Item>Radicados de Rentas</Breadcrumb.Item>
           </Breadcrumb>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {/* Primera tarjeta */}
             <Card title={<Title level={5}>Crear nuevo caso</Title>}>
-              <Form
-                layout="vertical"
-                size={componentSize}
-                style={{ maxWidth: "100%" }}
-              >
+              <Form layout="vertical" size={componentSize} onFinish={onFinish}>
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item
                       label="Fecha"
-                      name="fecha"
+                      name="creation_date"
                       rules={[{ required: true, message: "Seleccione una fecha" }]}
                     >
                       <DatePicker style={{ width: "100%" }} />
@@ -145,7 +204,7 @@ export const CaseRentsForm: React.FC = () => {
                   <Col span={12}>
                     <Form.Item
                       label="Fecha del Documento"
-                      name="fechaDocumento"
+                      name="document_date"
                       rules={[{ required: true, message: "Seleccione la fecha del documento" }]}
                     >
                       <DatePicker style={{ width: "100%" }} />
@@ -202,19 +261,11 @@ export const CaseRentsForm: React.FC = () => {
               </Form>
             </Card>
 
-            {/* Segunda tarjeta */}
             <Card title={<Title level={5}>Información de Radicados de Rentas</Title>}>
-              <Table
-                columns={tableColumns}
-                dataSource={tableData}
-                pagination={{ pageSize: 10, total: tableData.length }}
-                scroll={{ x: 1300 }}
-              />
+              <Table columns={tableColumns} dataSource={data} pagination={{ pageSize }} rowKey="id" />
             </Card>
 
-            {/* Tercera tarjeta */}
             <Card title={<Title level={5}>Configuración</Title>}>
-              <Text>Número de casos: {tableData.length}</Text>
               <div style={{ marginTop: "16px" }}>
                 <Text>Tamaño del formulario:</Text>
                 <Radio.Group
@@ -223,12 +274,43 @@ export const CaseRentsForm: React.FC = () => {
                   style={{ marginLeft: "8px" }}
                 >
                   <Radio value="small">Pequeño</Radio>
-                  <Radio value="default">Mediano</Radio>
+                  <Radio value="middle">Mediano</Radio>
                   <Radio value="large">Grande</Radio>
                 </Radio.Group>
               </div>
+              <div style={{ marginTop: "16px" }}>
+                <Text>Paginación:</Text>
+                <InputNumber
+                  min={5}
+                  max={50}
+                  value={pageSize}
+                  onChange={(value) => setPageSize(value || 10)}
+                  style={{ marginLeft: "8px" }}
+                />
+              </div>
+              <div style={{ marginTop: "16px" }}>
+                <Switch
+                  checked={isDarkMode}
+                  onChange={toggleDarkMode}
+                  checkedChildren="Modo Oscuro"
+                  unCheckedChildren="Modo Claro"
+                />
+              </div>
+              <div style={{ marginTop: "16px" }}>
+                <Button type="primary" onClick={showColumnConfig}>
+                  Configurar Columnas
+                </Button>
+              </div>
             </Card>
           </div>
+          <Modal
+            title="Configuración de Columnas"
+            visible={isModalVisible}
+            onCancel={handleModalCancel}
+            footer={null}
+          >
+            <Text>Opciones de columnas próximamente...</Text>
+          </Modal>
         </Content>
       </Layout>
     </Layout>
