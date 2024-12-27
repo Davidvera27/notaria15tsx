@@ -34,8 +34,9 @@ interface ProtocolistData {
 }
 
 export const Protocolist: React.FC = () => {
-    const [componentSize, setComponentSize] = useState<"small" | "middle" | "large">("middle");
+  const [componentSize, setComponentSize] = useState<"small" | "middle" | "large">("middle");
   const [pageSize, setPageSize] = useState<number>(10);
+  const [tableData,] = useState<ProtocolistData[]>([]); // Inicialización vacía
 
   const handleFormLayoutChange = (e: RadioChangeEvent) => {
     setComponentSize(e.target.value as "small" | "middle" | "large");
@@ -65,24 +66,6 @@ export const Protocolist: React.FC = () => {
     },
   ];
 
-  const generateProtocolistData = (count: number): ProtocolistData[] => {
-    const data: ProtocolistData[] = [];
-    for (let i = 1; i <= count; i++) {
-      data.push({
-        key: i,
-        id: i,
-        name: `Protocolista ${i}`,
-        email: `protocolista${i}@example.com`,
-        activeCases: Math.floor(Math.random() * 100),
-        state: i % 2 === 0 ? "Activo" : "Inactivo",
-        observations: i % 3 === 0 ? "Revisión pendiente" : undefined,
-      });
-    }
-    return data;
-  };
-
-  const tableData = generateProtocolistData(50);
-
   return (
     <Layout>
       <Header />
@@ -98,7 +81,7 @@ export const Protocolist: React.FC = () => {
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {/* Primera tarjeta */}
             <Card title={<Title level={5}>Crear nuevo protocolista</Title>}>
-            <Form layout="vertical" size={componentSize}>
+              <Form layout="vertical" size={componentSize}>
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item
@@ -150,7 +133,7 @@ export const Protocolist: React.FC = () => {
             <Card title={<Title level={5}>Protocolistas</Title>}>
               <Table
                 columns={tableColumns}
-                dataSource={tableData}
+                dataSource={tableData} // Ahora espera datos dinámicos
                 pagination={{ pageSize, total: tableData.length }}
                 scroll={{ x: 1000 }}
               />
@@ -167,7 +150,7 @@ export const Protocolist: React.FC = () => {
                   style={{ marginLeft: "8px" }}
                 >
                   <Radio value="small">Pequeño</Radio>
-                  <Radio value="default">Mediano</Radio>
+                  <Radio value="middle">Mediano</Radio>
                   <Radio value="large">Grande</Radio>
                 </Radio.Group>
               </div>
@@ -182,7 +165,6 @@ export const Protocolist: React.FC = () => {
                 />
               </div>
             </Card>
-
           </div>
         </Content>
       </Layout>
