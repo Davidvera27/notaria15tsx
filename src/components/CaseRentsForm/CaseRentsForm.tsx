@@ -14,6 +14,7 @@ import {
   Space,
   Row,
   Col,
+  Tag,
 } from "antd";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { Header } from "../Header/Header";
@@ -22,24 +23,63 @@ const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
 const { Option } = Select;
 
+interface TableData {
+  key: number;
+  no: number;
+  creationDate: string;
+  escritura: string;
+  documentDate: string;
+  radicado: string;
+  protocolista: string;
+  observaciones: string;
+}
+
 export const CaseRentsForm: React.FC = () => {
-  const [componentSize, setComponentSize] = useState("default");
+  const [componentSize, setComponentSize] = useState<string>("default");
 
   const handleFormLayoutChange = (e: any) => {
     setComponentSize(e.target.value);
   };
 
   const tableColumns = [
-    { title: "No.", dataIndex: "no", key: "no" },
-    { title: "Fecha de creación", dataIndex: "creationDate", key: "creationDate" },
-    { title: "Escritura", dataIndex: "escritura", key: "escritura" },
+    { title: "No.", dataIndex: "no", key: "no", fixed: "left", width: 50 },
+    {
+      title: "Fecha de creación",
+      dataIndex: "creationDate",
+      key: "creationDate",
+      sorter: (a: TableData, b: TableData) => a.creationDate.localeCompare(b.creationDate),
+    },
+    {
+      title: "Escritura",
+      dataIndex: "escritura",
+      key: "escritura",
+      sorter: (a: TableData, b: TableData) => a.escritura.localeCompare(b.escritura),
+    },
     { title: "Fecha del documento", dataIndex: "documentDate", key: "documentDate" },
     { title: "Radicado", dataIndex: "radicado", key: "radicado" },
-    { title: "Protocolista", dataIndex: "protocolista", key: "protocolista" },
-    { title: "Observaciones", dataIndex: "observaciones", key: "observaciones" },
+    {
+      title: "Protocolista",
+      dataIndex: "protocolista",
+      key: "protocolista",
+      filters: [
+        { text: "MERCEDITAS DIONNE PALACIO LOPEZ", value: "MERCEDITAS DIONNE PALACIO LOPEZ" },
+        { text: "DAVID POSADA HINCAPIE", value: "DAVID POSADA HINCAPIE" },
+        { text: "GLORIA MARY HINCAPIE MONTOYA", value: "GLORIA MARY HINCAPIE MONTOYA" },
+      ],
+      onFilter: (value: string, record: TableData) => record.protocolista === value,
+    },
+    {
+      title: "Observaciones",
+      dataIndex: "observaciones",
+      key: "observaciones",
+      render: (text: string) =>
+        text ? <Tag color="red">{text}</Tag> : <Text type="secondary">Sin observaciones</Text>,
+    },
     {
       title: "Acciones",
       key: "acciones",
+      fixed: "right",
+      width: 100,
       render: () => (
         <Space>
           <Button type="link">Editar</Button>
@@ -49,7 +89,28 @@ export const CaseRentsForm: React.FC = () => {
     },
   ];
 
-  const tableData: any[] = []; // Datos vacíos para la tabla
+  const generateRandomData = (count: number): TableData[] => {
+    const data: TableData[] = [];
+    for (let i = 1; i <= count; i++) {
+      data.push({
+        key: i,
+        no: i,
+        creationDate: `2024-08-30 08:54:${i % 60}`,
+        escritura: Math.floor(8000 + Math.random() * 2000).toString(),
+        documentDate: "02/09/2024",
+        radicado: `202401039${i.toString().padStart(3, "0")}`,
+        protocolista: [
+          "MERCEDITAS DIONNE PALACIO LOPEZ",
+          "DAVID POSADA HINCAPIE",
+          "GLORIA MARY HINCAPIE MONTOYA",
+        ][Math.floor(Math.random() * 3)],
+        observaciones: i % 5 === 0 ? "FALTO 1 FIDEICOMISO POR LIQUIDAR" : "",
+      });
+    }
+    return data;
+  };
+
+  const tableData = generateRandomData(100);
 
   return (
     <Layout>
@@ -68,7 +129,7 @@ export const CaseRentsForm: React.FC = () => {
             <Card title={<Title level={5}>Crear nuevo caso</Title>}>
               <Form
                 layout="vertical"
-                size={componentSize as any}
+                size={componentSize}
                 style={{ maxWidth: "100%" }}
               >
                 <Row gutter={16}>
@@ -143,7 +204,12 @@ export const CaseRentsForm: React.FC = () => {
 
             {/* Segunda tarjeta */}
             <Card title={<Title level={5}>Información de Radicados de Rentas</Title>}>
-              <Table columns={tableColumns} dataSource={tableData} pagination={{ pageSize: 5 }} />
+              <Table
+                columns={tableColumns}
+                dataSource={tableData}
+                pagination={{ pageSize: 10, total: tableData.length }}
+                scroll={{ x: 1300 }}
+              />
             </Card>
 
             {/* Tercera tarjeta */}
