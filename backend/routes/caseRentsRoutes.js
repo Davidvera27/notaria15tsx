@@ -6,15 +6,43 @@ const router = express.Router();
 router.post('/case-rents', (req, res) => {
     const { creation_date, document_date, escritura, radicado, protocolista, observaciones } = req.body;
     const last_modified = new Date().toISOString();
-    const query = `
-        INSERT INTO case_rents (creation_date, document_date, escritura, radicado, protocolista, observaciones, last_modified)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    `;
-    db.run(query, [creation_date, document_date, escritura, radicado, protocolista, observaciones, last_modified], function (err) {
+
+    // Validación 1: Verificar si el radicado ya existe
+    const radicadoQuery = 'SELECT id, protocolista FROM case_rents WHERE radicado = ?';
+    db.get(radicadoQuery, [radicado], (err, row) => {
         if (err) {
-            return res.status(500).json({ error: err.message });
+            return res.status(500).json({ error: "Error al verificar el radicado." });
         }
-        res.status(201).json({ id: this.lastID });
+        if (row) {
+            return res.status(400).json({
+                error: `El radicado ya existe en la fila ${row.id} y pertenece al protocolista ${row.protocolista}.`,
+            });
+        }
+
+        // Validación 2: Verificar si escritura y fecha del documento ya existen
+        const escrituraQuery = 'SELECT id FROM case_rents WHERE escritura = ? AND document_date = ?';
+        db.get(escrituraQuery, [escritura, document_date], (err, row) => {
+            if (err) {
+                return res.status(500).json({ error: "Error al verificar la escritura y la fecha del documento." });
+            }
+            if (row) {
+                return res.status(400).json({
+                    error: "La combinación de escritura y fecha del documento ya existe.",
+                });
+            }
+
+            // Si pasa las validaciones, insertar el registro
+            const insertQuery = `
+                INSERT INTO case_rents (creation_date, document_date, escritura, radicado, protocolista, observaciones, last_modified)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `;
+            db.run(insertQuery, [creation_date, document_date, escritura, radicado, protocolista, observaciones, last_modified], function (err) {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                res.status(201).json({ id: this.lastID });
+            });
+        });
     });
 });
 
