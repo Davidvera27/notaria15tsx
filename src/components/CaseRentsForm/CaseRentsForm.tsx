@@ -72,13 +72,36 @@ export const CaseRentsForm: React.FC = () => {
   };
 
   const addCaseRent = async (values: TableData) => {
+    // Validations before sending data to the server
+    if (!/^[0-9]+$/.test(values.escritura)) {
+      return message.error("El número de escritura solo debe contener caracteres numéricos.");
+    }
+
+    if (values.radicado.length < 8 || values.radicado.length > 20) {
+      return message.error("El radicado debe tener entre 8 y 20 caracteres.");
+    }
+
+    if (new Date(values.document_date) > new Date(values.creation_date)) {
+      return message.error("La fecha del documento no puede ser posterior a la fecha de creación.");
+    }
+
+    const currentYear = new Date().getFullYear();
+    const creationYear = new Date(values.creation_date).getFullYear();
+    if (creationYear > currentYear || creationYear < currentYear - 10) {
+      return message.error("La fecha de creación debe estar dentro del rango permitido de 10 años.");
+    }
+
     try {
       await axios.post("http://localhost:5000/api/case-rents", values);
       fetchData();
       message.success("Caso agregado correctamente");
-    } catch (error) {
-      console.error("Error adding case:", error);
-      message.error("Error al agregar el caso");
+    } catch (error: any) {
+      if (error.response && error.response.data.error) {
+        message.error(error.response.data.error);
+      } else {
+        console.error("Error adding case:", error);
+        message.error("Error al agregar el caso");
+      }
     }
   };
 
