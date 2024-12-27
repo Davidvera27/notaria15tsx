@@ -25,7 +25,6 @@ import {
 const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
 
-
 type TableData = {
   key: number;
   no: number;
@@ -45,7 +44,7 @@ export const CaseRentsFinished: React.FC = () => {
     setComponentSize(e.target.value);
   };
 
-  const menuItems: MenuProps['items'] = [
+  const menuItems: MenuProps["items"] = [
     {
       label: "Restablecer",
       key: "1",
@@ -106,25 +105,6 @@ export const CaseRentsFinished: React.FC = () => {
     },
   ];
 
-  const generateRandomData = (count: number): TableData[] => {
-    const data: TableData[] = [];
-    for (let i = 1; i <= count; i++) {
-      data.push({
-        key: i,
-        no: i,
-        creationDate: `2024-08-${Math.min(30, i)}`,
-        escritura: `Escritura ${i}`,
-        documentDate: `2024-08-${Math.min(30, i)}`,
-        radicado: `Radicado ${i}`,
-        protocolista: ["GLORIA MARY HINCAPIE MONTOYA", "MERCEDITAS DIONNE PALACIO LOPEZ", "DAVID POSADA HINCAPIE"][i % 3],
-        observaciones: i % 5 === 0 ? "Observación importante" : "",
-      });
-    }
-    return data;
-  };
-
-  const tableData = generateRandomData(100);
-
   return (
     <Layout>
       <Header />
@@ -141,14 +121,14 @@ export const CaseRentsFinished: React.FC = () => {
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {/* Primera Tarjeta */}
             <Card title={<Title level={5}>Información De Casos Enviados</Title>}>
-              <Text>Total de casos: {tableData.length}</Text>
+              <Text>Total de casos: 0</Text>
             </Card>
 
             {/* Segunda Tarjeta */}
             <Card title={<Title level={5}>Información de Boletas de Rentas Enviadas</Title>}>
               <Table
                 columns={tableColumns}
-                dataSource={tableData}
+                dataSource={[]} // Sin datos por ahora, a la espera del backend
                 pagination={{ pageSize }}
                 scroll={{ x: 1000 }}
               />
