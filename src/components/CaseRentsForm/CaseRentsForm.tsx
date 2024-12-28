@@ -20,9 +20,11 @@ import {
   Switch,
   InputNumber,
   message,
+  RadioChangeEvent,
 } from "antd";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { Header } from "../Header/Header";
+import dayjs from "dayjs";
 
 const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
@@ -46,8 +48,8 @@ export const CaseRentsForm: React.FC = () => {
   const [data, setData] = useState<TableData[]>([]);
   const [editingCase, setEditingCase] = useState<TableData | null>(null);
 
-  const handleFormLayoutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setComponentSize(e.target.value as "small" | "middle" | "large");
+  const handleFormLayoutChange = (e: RadioChangeEvent) => {
+    setComponentSize(e.target.value);
   };
 
   const toggleDarkMode = () => {
@@ -60,9 +62,10 @@ export const CaseRentsForm: React.FC = () => {
 
   const handleModalCancel = () => {
     setIsModalVisible(false);
+    setEditingCase(null); // Limpieza del estado
   };
 
-  <Modal visible={isModalVisible} onCancel={handleModalCancel}></Modal>
+  <Modal open={isModalVisible} onCancel={handleModalCancel}></Modal>
 
   const fetchData = async () => {
     try {
@@ -101,9 +104,14 @@ export const CaseRentsForm: React.FC = () => {
   };
 
   const openEditModal = (record: TableData) => {
+    if (!record) {
+      message.error("No se puede editar un registro vacío.");
+      return;
+    }
     setEditingCase(record);
     setIsModalVisible(true);
   };
+  
 
   const updateCaseRent = async (values: TableData) => {
     try {
@@ -184,17 +192,22 @@ export const CaseRentsForm: React.FC = () => {
   ];
 
   const onFinish = (values: Record<string, any>) => {
-    const formattedValues: TableData = {
+    const formattedValues: Partial<TableData> = {
       ...values,
-      creation_date: values.creation_date?.format("YYYY-MM-DD") || "",
-      document_date: values.document_date?.format("YYYY-MM-DD") || "",
+      creation_date: values.creation_date
+        ? dayjs(values.creation_date).format("YYYY-MM-DD")
+        : "",
+      document_date: values.document_date
+        ? dayjs(values.document_date).format("YYYY-MM-DD")
+        : "",
     };
     if (editingCase) {
       updateCaseRent({ ...editingCase, ...formattedValues });
     } else {
-      addCaseRent(formattedValues);
+      addCaseRent(formattedValues as TableData);
     }
   };
+  
 
   return (
     <Layout>
@@ -341,18 +354,19 @@ export const CaseRentsForm: React.FC = () => {
             </Card>
           </div>
           <Modal
-            title={editingCase ? "Editar Caso" : "Configuración de Columnas"}
-            visible={isModalVisible}
-            onCancel={() => {
-              setIsModalVisible(false);
-              setEditingCase(null);
-            }}
+            title="Editar Caso"
+            open={isModalVisible}
+            onCancel={handleModalCancel}
             footer={null}
           >
-            {editingCase ? (
+            {editingCase && (
               <Form
                 layout="vertical"
-                initialValues={editingCase}
+                initialValues={{
+                  ...editingCase,
+                  creation_date: dayjs(editingCase.creation_date),
+                  document_date: dayjs(editingCase.document_date),
+                }}
                 onFinish={onFinish}
               >
                 <Row gutter={16}>
@@ -375,7 +389,6 @@ export const CaseRentsForm: React.FC = () => {
                     </Form.Item>
                   </Col>
                 </Row>
-
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item
@@ -396,7 +409,6 @@ export const CaseRentsForm: React.FC = () => {
                     </Form.Item>
                   </Col>
                 </Row>
-
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item
@@ -416,15 +428,12 @@ export const CaseRentsForm: React.FC = () => {
                     </Form.Item>
                   </Col>
                 </Row>
-
                 <Form.Item>
                   <Button type="primary" htmlType="submit">
                     Guardar Cambios
                   </Button>
                 </Form.Item>
               </Form>
-            ) : (
-              <Text>Opciones de columnas próximamente...</Text>
             )}
           </Modal>
         </Content>
