@@ -47,6 +47,7 @@ export const CaseRentsForm: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [data, setData] = useState<TableData[]>([]);
   const [editingCase, setEditingCase] = useState<TableData | null>(null);
+  const [form] = Form.useForm();
 
   const handleFormLayoutChange = (e: RadioChangeEvent) => {
     setComponentSize(e.target.value);
@@ -62,7 +63,8 @@ export const CaseRentsForm: React.FC = () => {
 
   const handleModalCancel = () => {
     setIsModalVisible(false);
-    setEditingCase(null); // Limpieza del estado
+    setEditingCase(null);
+    form.resetFields(); // Reinicia el formulario
   };
 
   <Modal open={isModalVisible} onCancel={handleModalCancel}></Modal>
@@ -82,13 +84,9 @@ export const CaseRentsForm: React.FC = () => {
       await axios.post("http://localhost:5000/api/case-rents", values);
       fetchData();
       message.success("Caso agregado correctamente");
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error) && error.response && error.response.data.error) {
-        message.error(error.response.data.error);
-      } else {
-        console.error("Error adding case:", error);
-        message.error("Error al agregar el caso");
-      }
+    } catch (error) {
+      console.error("Error adding case:", error);
+      message.error("Error al agregar el caso");
     }
   };
 
@@ -104,28 +102,28 @@ export const CaseRentsForm: React.FC = () => {
   };
 
   const openEditModal = (record: TableData) => {
-    if (!record) {
-      message.error("No se puede editar un registro vacío.");
-      return;
-    }
     setEditingCase(record);
     setIsModalVisible(true);
+    // Inicializamos el formulario con los datos seleccionados
+    form.setFieldsValue({
+      ...record,
+      creation_date: dayjs(record.creation_date),
+      document_date: dayjs(record.document_date),
+    });
   };
   
 
-  const updateCaseRent = async (values: TableData) => {
+  const updateCaseRent = async (values: Partial<TableData>) => {
     try {
-      await axios.put(`http://localhost:5000/api/case-rents/${values.id}`, values);
+      if (!editingCase) return;
+      const updatedValues = { ...editingCase, ...values }; // Solo modifica los campos necesarios
+      await axios.put(`http://localhost:5000/api/case-rents/${editingCase.id}`, updatedValues);
       fetchData();
       message.success("Caso actualizado correctamente");
-      setIsModalVisible(false);
-    } catch (error: unknown) {
-      if (axios.isAxiosError(error) && error.response && error.response.data.error) {
-        message.error(error.response.data.error);
-      } else {
-        console.error("Error updating case:", error);
-        message.error("Error al actualizar el caso");
-      }
+      handleModalCancel();
+    } catch (error) {
+      console.error("Error updating case:", error);
+      message.error("Error al actualizar el caso");
     }
   };
 
@@ -190,6 +188,10 @@ export const CaseRentsForm: React.FC = () => {
       ),
     },
   ];
+
+  const onModalFinish = (values: Partial<TableData>) => {
+    updateCaseRent(values);
+  };
 
   const onFinish = (values: Record<string, any>) => {
     const formattedValues: Partial<TableData> = {
@@ -292,21 +294,9 @@ export const CaseRentsForm: React.FC = () => {
                 </Row>
 
                 <Form.Item>
-                  <Space>
-                    <Button type="primary" htmlType="submit">
-                      {editingCase ? "Actualizar Caso" : "Agregar Caso"}
-                    </Button>
-                    {editingCase && (
-                      <Button
-                        onClick={() => {
-                          setEditingCase(null);
-                          setIsModalVisible(false);
-                        }}
-                      >
-                        Cancelar
-                      </Button>
-                    )}
-                  </Space>
+                <Button type="primary" htmlType="submit">
+                    Agregar Caso
+                  </Button>
                 </Form.Item>
               </Form>
             </Card>
@@ -359,82 +349,76 @@ export const CaseRentsForm: React.FC = () => {
             onCancel={handleModalCancel}
             footer={null}
           >
-            {editingCase && (
-              <Form
-                layout="vertical"
-                initialValues={{
-                  ...editingCase,
-                  creation_date: dayjs(editingCase.creation_date),
-                  document_date: dayjs(editingCase.document_date),
-                }}
-                onFinish={onFinish}
-              >
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Fecha"
-                      name="creation_date"
-                      rules={[{ required: true, message: "Seleccione una fecha" }]}
-                    >
-                      <DatePicker style={{ width: "100%" }} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Fecha del Documento"
-                      name="document_date"
-                      rules={[{ required: true, message: "Seleccione la fecha del documento" }]}
-                    >
-                      <DatePicker style={{ width: "100%" }} />
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Escritura"
-                      name="escritura"
-                      rules={[{ required: true, message: "Ingrese el número de escritura" }]}
-                    >
-                      <Input placeholder="Ej: 12345" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Radicado"
-                      name="radicado"
-                      rules={[{ required: true, message: "Ingrese el radicado" }]}
-                    >
-                      <Input placeholder="Ej: 20240101234432" />
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Protocolista"
-                      name="protocolista"
-                      rules={[{ required: true, message: "Seleccione un protocolista" }]}
-                    >
-                      <Select placeholder="Seleccione un protocolista">
-                        <Option value="Protocolista 1">Protocolista 1</Option>
-                        <Option value="Protocolista 2">Protocolista 2</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Observaciones" name="observaciones">
-                      <Input.TextArea placeholder="Observaciones adicionales (opcional)" />
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Form.Item>
-                  <Button type="primary" htmlType="submit">
-                    Guardar Cambios
-                  </Button>
-                </Form.Item>
-              </Form>
-            )}
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={onModalFinish}
+            >
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    label="Fecha"
+                    name="creation_date"
+                    rules={[{ required: true, message: "Seleccione una fecha" }]}
+                  >
+                    <DatePicker style={{ width: "100%" }} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    label="Fecha del Documento"
+                    name="document_date"
+                    rules={[{ required: true, message: "Seleccione la fecha del documento" }]}
+                  >
+                    <DatePicker style={{ width: "100%" }} />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    label="Escritura"
+                    name="escritura"
+                    rules={[{ required: true, message: "Ingrese el número de escritura" }]}
+                  >
+                    <Input placeholder="Ej: 12345" />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    label="Radicado"
+                    name="radicado"
+                    rules={[{ required: true, message: "Ingrese el radicado" }]}
+                  >
+                    <Input placeholder="Ej: 20240101234432" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item
+                    label="Protocolista"
+                    name="protocolista"
+                    rules={[{ required: true, message: "Seleccione un protocolista" }]}
+                  >
+                    <Select placeholder="Seleccione un protocolista">
+                      <Option value="Protocolista 1">Protocolista 1</Option>
+                      <Option value="Protocolista 2">Protocolista 2</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item label="Observaciones" name="observaciones">
+                    <Input.TextArea placeholder="Observaciones adicionales (opcional)" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Form.Item>
+                <Button type="primary" htmlType="submit">
+                  Guardar Cambios
+                </Button>
+              </Form.Item>
+            </Form>
           </Modal>
         </Content>
       </Layout>
