@@ -81,6 +81,20 @@ export const CaseRentsForm: React.FC = () => {
 
   const addCaseRent = async (values: TableData) => {
     try {
+      // Validar duplicación antes de enviar
+      const isDuplicate = data.some(
+        (item) =>
+          item.escritura === values.escritura ||
+          item.radicado === values.radicado
+      );
+  
+      if (isDuplicate) {
+        message.error(
+          "Ya existe un caso con el mismo número de escritura o radicado."
+        );
+        return;
+      }
+  
       await axios.post("http://localhost:5000/api/case-rents", values);
       fetchData();
       message.success("Caso agregado correctamente");
@@ -116,7 +130,23 @@ export const CaseRentsForm: React.FC = () => {
   const updateCaseRent = async (values: Partial<TableData>) => {
     try {
       if (!editingCase) return;
-      const updatedValues = { ...editingCase, ...values }; // Solo modifica los campos necesarios
+  
+      // Validar duplicación al actualizar (excepto para el caso actual)
+      const isDuplicate = data.some(
+        (item) =>
+          (item.escritura === values.escritura ||
+            item.radicado === values.radicado) &&
+          item.id !== editingCase.id
+      );
+  
+      if (isDuplicate) {
+        message.error(
+          "Ya existe un caso con el mismo número de escritura o radicado."
+        );
+        return;
+      }
+  
+      const updatedValues = { ...editingCase, ...values };
       await axios.put(`http://localhost:5000/api/case-rents/${editingCase.id}`, updatedValues);
       fetchData();
       message.success("Caso actualizado correctamente");
