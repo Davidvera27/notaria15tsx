@@ -15,12 +15,12 @@ import {
   Space,
   Row,
   Col,
-  Tag,
   Modal,
   Switch,
   InputNumber,
   message,
   RadioChangeEvent,
+  Tooltip, // Importar Tooltip aquí
 } from "antd";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { Header } from "../Header/Header";
@@ -138,7 +138,7 @@ export const CaseRentsForm: React.FC = () => {
     try {
       if (!editingCase) return;
   
-      // Filtrar solo los campos que han cambiado
+      // Filtrar los campos que han cambiado
       const changedFields = Object.entries(values).reduce((acc, [key, value]) => {
         const currentValue = editingCase[key as keyof TableData];
         if (currentValue !== undefined && currentValue !== value) {
@@ -146,6 +146,21 @@ export const CaseRentsForm: React.FC = () => {
         }
         return acc;
       }, {} as Partial<TableData>);
+  
+      // Construir la observación automáticamente
+      const observationChanges = Object.entries(changedFields)
+        .map(([key, newValue]) => {
+          const oldValue = editingCase[key as keyof TableData];
+          return `${key}: "${oldValue}" -> "${newValue}"`;
+        })
+        .join(", ");
+  
+      // Añadir el comentario a las observaciones
+      const updatedObservations = editingCase.observaciones
+        ? `${editingCase.observaciones} | Cambios: ${observationChanges}`
+        : `Cambios: ${observationChanges}`;
+  
+      changedFields.observaciones = updatedObservations;
   
       // Si no hay cambios, no realizar la actualización
       if (Object.keys(changedFields).length === 0) {
@@ -175,6 +190,7 @@ export const CaseRentsForm: React.FC = () => {
       }
     }
   };
+  
   
   
   
@@ -220,9 +236,14 @@ export const CaseRentsForm: React.FC = () => {
       title: "Observaciones",
       dataIndex: "observaciones",
       key: "observaciones",
-      render: (text: string | undefined) =>
-        text ? <Tag color="red">{text}</Tag> : <Text type="secondary">Sin observaciones</Text>,
-    },
+      ellipsis: true, // Truncar texto
+      render: (text: string) => (
+        <Tooltip title={text}>
+          <span>{text}</span>
+        </Tooltip>
+      ),
+    }
+    ,
     {
       title: "Acciones",
       key: "acciones",
