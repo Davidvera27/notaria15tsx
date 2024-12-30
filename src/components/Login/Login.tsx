@@ -45,7 +45,7 @@ export const Login = () => {
     reset();
   };
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: unknown) => {
     console.log("Submitted data:", data);
   };
 
