@@ -118,7 +118,6 @@ export const CaseRentsForm: React.FC = () => {
   const openEditModal = (record: TableData) => {
     setEditingCase(record);
     setIsModalVisible(true);
-    // Inicializamos el formulario con los datos seleccionados
     form.setFieldsValue({
       ...record,
       creation_date: dayjs(record.creation_date),
@@ -126,28 +125,33 @@ export const CaseRentsForm: React.FC = () => {
     });
   };
   
+  
 
   const updateCaseRent = async (values: Partial<TableData>) => {
     try {
       if (!editingCase) return;
   
-      // Validar duplicación al actualizar (excepto para el caso actual)
-      const isDuplicate = data.some(
-        (item) =>
-          (item.escritura === values.escritura ||
-            item.radicado === values.radicado) &&
-          item.id !== editingCase.id
-      );
+      // Filtrar solo los campos que han cambiado
+      const changedFields = Object.entries(values).reduce((acc, [key, value]) => {
+        // Comprobar si la clave existe en `editingCase` y si los valores son diferentes
+        const currentValue = editingCase[key as keyof TableData];
+        if (currentValue !== undefined && currentValue !== value) {
+          acc[key as keyof TableData] = value as never; // Asegurar compatibilidad de tipos
+        }
+        return acc;
+      }, {} as Partial<TableData>);
+      
   
-      if (isDuplicate) {
-        message.error(
-          "Ya existe un caso con el mismo número de escritura o radicado."
-        );
+      // Si no hay campos modificados, no se realiza la actualización
+      if (Object.keys(changedFields).length === 0) {
+        message.info("No se detectaron cambios para actualizar.");
         return;
       }
   
-      const updatedValues = { ...editingCase, ...values };
-      await axios.put(`http://localhost:5000/api/case-rents/${editingCase.id}`, updatedValues);
+      await axios.put(
+        `http://localhost:5000/api/case-rents/${editingCase.id}`,
+        changedFields
+      );
       fetchData();
       message.success("Caso actualizado correctamente");
       handleModalCancel();
@@ -156,6 +160,7 @@ export const CaseRentsForm: React.FC = () => {
       message.error("Error al actualizar el caso");
     }
   };
+  
 
   useEffect(() => {
     fetchData();
@@ -220,25 +225,38 @@ export const CaseRentsForm: React.FC = () => {
   ];
 
   const onModalFinish = (values: Partial<TableData>) => {
-    updateCaseRent(values);
-  };
-
-  const onFinish = (values: Record<string, any>) => {
-    const formattedValues: Partial<TableData> = {
+    // Asegurarse de que las fechas siempre estén en formato 'YYYY-MM-DD'
+    const formattedValues = {
       ...values,
       creation_date: values.creation_date
         ? dayjs(values.creation_date).format("YYYY-MM-DD")
-        : "",
+        : editingCase?.creation_date, // Usar el valor original si no fue editado
       document_date: values.document_date
         ? dayjs(values.document_date).format("YYYY-MM-DD")
-        : "",
+        : editingCase?.document_date, // Usar el valor original si no fue editado
+    };
+  
+    updateCaseRent(formattedValues);
+  };
+    
+
+  const onFinish = (values: Record<string, unknown>) => {
+    const formattedValues: Partial<TableData> = {
+        ...values,
+        creation_date: values.creation_date
+            ? dayjs(values.creation_date as string).format("YYYY-MM-DD")
+            : "",
+        document_date: values.document_date
+            ? dayjs(values.document_date as string).format("YYYY-MM-DD")
+            : "",
     };
     if (editingCase) {
-      updateCaseRent({ ...editingCase, ...formattedValues });
+        updateCaseRent({ ...editingCase, ...formattedValues });
     } else {
-      addCaseRent(formattedValues as TableData);
+        addCaseRent(formattedValues as TableData);
     }
-  };
+};
+
   
 
   return (
