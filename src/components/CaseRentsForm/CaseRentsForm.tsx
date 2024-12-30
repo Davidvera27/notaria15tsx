@@ -147,13 +147,13 @@ export const CaseRentsForm: React.FC = () => {
         return acc;
       }, {} as Partial<TableData>);
   
-      // Si no hay campos modificados, no realizar la actualización
+      // Si no hay cambios, no realizar la actualización
       if (Object.keys(changedFields).length === 0) {
         message.info("No se detectaron cambios para actualizar.");
         return;
       }
   
-      // Enviar actualización al backend
+      // Enviar solicitud de actualización al backend
       await axios.put(
         `http://localhost:5000/api/case-rents/${editingCase.id}`,
         changedFields
@@ -175,6 +175,7 @@ export const CaseRentsForm: React.FC = () => {
       }
     }
   };
+  
   
   
 
