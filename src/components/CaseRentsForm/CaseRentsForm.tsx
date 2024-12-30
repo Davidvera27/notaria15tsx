@@ -126,28 +126,34 @@ export const CaseRentsForm: React.FC = () => {
   };
   
   
-
+  interface AxiosError {
+    response?: {
+      data?: {
+        error?: string;
+      };
+    };
+  }
+  
   const updateCaseRent = async (values: Partial<TableData>) => {
     try {
       if (!editingCase) return;
   
       // Filtrar solo los campos que han cambiado
       const changedFields = Object.entries(values).reduce((acc, [key, value]) => {
-        // Comprobar si la clave existe en `editingCase` y si los valores son diferentes
         const currentValue = editingCase[key as keyof TableData];
         if (currentValue !== undefined && currentValue !== value) {
-          acc[key as keyof TableData] = value as never; // Asegurar compatibilidad de tipos
+          acc[key as keyof TableData] = value as never;
         }
         return acc;
       }, {} as Partial<TableData>);
-      
   
-      // Si no hay campos modificados, no se realiza la actualización
+      // Si no hay campos modificados, no realizar la actualización
       if (Object.keys(changedFields).length === 0) {
         message.info("No se detectaron cambios para actualizar.");
         return;
       }
   
+      // Enviar actualización al backend
       await axios.put(
         `http://localhost:5000/api/case-rents/${editingCase.id}`,
         changedFields
@@ -155,11 +161,21 @@ export const CaseRentsForm: React.FC = () => {
       fetchData();
       message.success("Caso actualizado correctamente");
       handleModalCancel();
-    } catch (error) {
-      console.error("Error updating case:", error);
-      message.error("Error al actualizar el caso");
+    } catch (error: unknown) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof (error as AxiosError).response === "object" &&
+        (error as AxiosError).response?.data?.error
+      ) {
+        message.error((error as AxiosError).response?.data?.error);
+      } else {
+        message.error("Error al actualizar el caso.");
+      }
     }
   };
+  
   
 
   useEffect(() => {
