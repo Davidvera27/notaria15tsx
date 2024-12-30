@@ -60,20 +60,29 @@ router.get('/case-rents', (req, res) => {
 // UPDATE
 router.put('/case-rents/:id', (req, res) => {
     const { id } = req.params;
-    const { creation_date, document_date, escritura, radicado, protocolista, observaciones } = req.body;
+    const fields = req.body; // Recibir solo los campos modificados
     const last_modified = new Date().toISOString();
+  
+    // Construir dinámicamente la consulta SQL
+    const setClause = Object.keys(fields)
+      .map((key) => `${key} = ?`)
+      .join(", ");
+    const values = [...Object.values(fields), last_modified, id];
+  
     const query = `
-        UPDATE case_rents
-        SET creation_date = ?, document_date = ?, escritura = ?, radicado = ?, protocolista = ?, observaciones = ?, last_modified = ?
-        WHERE id = ?
+      UPDATE case_rents
+      SET ${setClause}, last_modified = ?
+      WHERE id = ?
     `;
-    db.run(query, [creation_date, document_date, escritura, radicado, protocolista, observaciones, last_modified, id], function (err) {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        res.json({ updatedRows: this.changes });
+  
+    db.run(query, values, function (err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ updatedRows: this.changes });
     });
-});
+  });
+  
 
 // DELETE
 router.delete('/case-rents/:id', (req, res) => {
