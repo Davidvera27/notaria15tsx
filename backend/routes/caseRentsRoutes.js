@@ -60,28 +60,58 @@ router.get('/case-rents', (req, res) => {
 // UPDATE
 router.put('/case-rents/:id', (req, res) => {
     const { id } = req.params;
-    const fields = req.body; // Recibir solo los campos modificados
+    const { radicado, escritura, document_date } = req.body; // Campos a validar
     const last_modified = new Date().toISOString();
-  
-    // Construir dinámicamente la consulta SQL
-    const setClause = Object.keys(fields)
-      .map((key) => `${key} = ?`)
-      .join(", ");
-    const values = [...Object.values(fields), last_modified, id];
-  
-    const query = `
-      UPDATE case_rents
-      SET ${setClause}, last_modified = ?
-      WHERE id = ?
-    `;
-  
-    db.run(query, values, function (err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      res.json({ updatedRows: this.changes });
+
+    // Validación 1: Verificar duplicado de radicado
+    const radicadoQuery = 'SELECT id, protocolista FROM case_rents WHERE radicado = ? AND id != ?';
+    db.get(radicadoQuery, [radicado, id], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: "Error al verificar el radicado." });
+        }
+        if (row) {
+            return res.status(400).json({
+                error: `El radicado ya existe en la fila ${row.id} y pertenece al protocolista ${row.protocolista}.`,
+            });
+        }
+
+        // Validación 2: Verificar duplicado de escritura + fecha del documento
+        const escrituraQuery = `
+            SELECT id FROM case_rents 
+            WHERE escritura = ? AND document_date = ? AND id != ?`;
+        db.get(escrituraQuery, [escritura, document_date, id], (err, row) => {
+            if (err) {
+                return res.status(500).json({ error: "Error al verificar escritura y fecha del documento." });
+            }
+            if (row) {
+                return res.status(400).json({
+                    error: "La combinación de escritura y fecha del documento ya existe en otro registro.",
+                });
+            }
+
+            // Si pasa las validaciones, proceder con la actualización
+            const fields = req.body;
+            const setClause = Object.keys(fields)
+                .map((key) => `${key} = ?`)
+                .join(", ");
+            const values = [...Object.values(fields), last_modified, id];
+
+            const updateQuery = `
+                UPDATE case_rents
+                SET ${setClause}, last_modified = ?
+                WHERE id = ?`;
+
+            db.run(updateQuery, values, function (err) {
+                if (err) {
+                    return res.status(500).json({ error: "Error al actualizar el registro." });
+                }
+                res.json({ success: true, updatedRows: this.changes });
+            });
+        });
     });
-  });
+});
+
+
   
 
 // DELETE
