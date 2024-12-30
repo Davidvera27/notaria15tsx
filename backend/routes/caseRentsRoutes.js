@@ -60,7 +60,7 @@ router.get('/case-rents', (req, res) => {
 // UPDATE
 router.put('/case-rents/:id', (req, res) => {
     const { id } = req.params;
-    const { radicado, escritura, document_date } = req.body; // Campos a validar
+    const { radicado, escritura, document_date } = req.body; // Extraemos los campos necesarios
     const last_modified = new Date().toISOString();
 
     // Validación 1: Verificar duplicado de radicado
@@ -77,7 +77,7 @@ router.put('/case-rents/:id', (req, res) => {
 
         // Validación 2: Verificar duplicado de escritura + fecha del documento
         const escrituraQuery = `
-            SELECT id FROM case_rents 
+            SELECT id, protocolista FROM case_rents 
             WHERE escritura = ? AND document_date = ? AND id != ?`;
         db.get(escrituraQuery, [escritura, document_date, id], (err, row) => {
             if (err) {
@@ -85,7 +85,7 @@ router.put('/case-rents/:id', (req, res) => {
             }
             if (row) {
                 return res.status(400).json({
-                    error: "La combinación de escritura y fecha del documento ya existe en otro registro.",
+                    error: `La combinación de escritura ${escritura} y fecha del documento ${document_date} ya existe en la fila ${row.id} con el protocolista ${row.protocolista}.`,
                 });
             }
 
