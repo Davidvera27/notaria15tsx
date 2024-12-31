@@ -45,6 +45,17 @@ router.get("/protocolist-rents", async (req, res) => {
     });
 });
 
+router.get("/api/protocolist-rents", async (req, res) => {
+    const query = "SELECT id, complete_name, last_name FROM protocolist_rents";
+  
+    db.all(query, [], (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: "Error al obtener los protocolistas" });
+      }
+      res.json(rows); // Devuelve una lista de protocolistas
+    });
+  });
+  
   
 
 
