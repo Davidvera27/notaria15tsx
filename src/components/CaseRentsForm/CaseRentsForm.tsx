@@ -84,12 +84,15 @@ export const CaseRentsForm: React.FC = () => {
   const fetchData = async () => {
     try {
       const response = await axios.get("http://localhost:5000/api/case-rents");
-      setData(response.data);
+      console.log("Data fetched:", response.data); // Añade un log para depurar
+      setData(response.data); // Asegúrate de que los datos actualicen el estado
     } catch (error) {
       console.error("Error fetching data:", error);
       message.error("Error al cargar los datos");
     }
   };
+  
+  
 
   const addCaseRent = async (values: TableData) => {
     try {
@@ -197,6 +200,7 @@ export const CaseRentsForm: React.FC = () => {
   };
 
   useEffect(() => {
+    fetchData();
     const fetchProtocolists = async () => {
       try {
         const response = await axios.get("http://localhost:5000/api/protocolist-rents");
@@ -254,6 +258,7 @@ export const CaseRentsForm: React.FC = () => {
       key: "protocolista",
       visible: visibleColumns.includes("protocolista"),
     },
+    
     {
       title: "Observaciones",
       dataIndex: "observaciones",
