@@ -18,6 +18,7 @@ import {
   Modal,
   Switch,
   InputNumber,
+  Checkbox,
   message,
   RadioChangeEvent,
   Tooltip,
@@ -44,9 +45,11 @@ export const CaseRentsForm: React.FC = () => {
   const [componentSize, setComponentSize] = useState<"small" | "middle" | "large">("middle");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isColumnConfigVisible, setIsColumnConfigVisible] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [data, setData] = useState<TableData[]>([]);
   const [editingCase, setEditingCase] = useState<TableData | null>(null);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(["id", "creation_date", "escritura", "document_date", "radicado", "protocolista", "observaciones"]);
   const [form] = Form.useForm();
 
   const handleFormLayoutChange = (e: RadioChangeEvent) => {
@@ -58,7 +61,11 @@ export const CaseRentsForm: React.FC = () => {
   };
 
   const showColumnConfig = () => {
-    setIsModalVisible(true);
+    setIsColumnConfigVisible(true);
+  };
+
+  const handleColumnConfigCancel = () => {
+    setIsColumnConfigVisible(false);
   };
 
   const handleModalCancel = () => {
@@ -193,37 +200,44 @@ export const CaseRentsForm: React.FC = () => {
       key: "id",
       fixed: "left" as const,
       width: 50,
+      visible: visibleColumns.includes("id"),
     },
     {
       title: "Fecha de creación",
       dataIndex: "creation_date",
       key: "creation_date",
+      visible: visibleColumns.includes("creation_date"),
     },
     {
       title: "Escritura",
       dataIndex: "escritura",
       key: "escritura",
+      visible: visibleColumns.includes("escritura"),
     },
     {
       title: "Fecha del documento",
       dataIndex: "document_date",
       key: "document_date",
+      visible: visibleColumns.includes("document_date"),
     },
     {
       title: "Radicado",
       dataIndex: "radicado",
       key: "radicado",
+      visible: visibleColumns.includes("radicado"),
     },
     {
       title: "Protocolista",
       dataIndex: "protocolista",
       key: "protocolista",
+      visible: visibleColumns.includes("protocolista"),
     },
     {
       title: "Observaciones",
       dataIndex: "observaciones",
       key: "observaciones",
       ellipsis: true,
+      visible: visibleColumns.includes("observaciones"),
       render: (text: string) => (
         <Tooltip title={text}>
           <span>{text}</span>
@@ -235,6 +249,7 @@ export const CaseRentsForm: React.FC = () => {
       key: "acciones",
       fixed: "right" as const,
       width: 150,
+      visible: true,
       render: (_: unknown, record: TableData) => (
         <Space>
           <Button type="link" onClick={() => openEditModal(record)}>
@@ -246,7 +261,7 @@ export const CaseRentsForm: React.FC = () => {
         </Space>
       ),
     },
-  ];
+  ].filter((col) => col.visible);
 
   const onModalFinish = (values: Partial<TableData>) => {
     const formattedValues = {
@@ -411,6 +426,19 @@ export const CaseRentsForm: React.FC = () => {
               </div>
             </Card>
           </div>
+          <Modal
+            title="Configurar Columnas"
+            open={isColumnConfigVisible}
+            onCancel={handleColumnConfigCancel}
+            footer={null}
+          >
+            <Checkbox.Group
+              options={["id", "creation_date", "escritura", "document_date", "radicado", "protocolista", "observaciones"]}
+              value={visibleColumns}
+              onChange={(selectedColumns) => setVisibleColumns(selectedColumns as string[])}
+            />
+          </Modal>
+
           <Modal
             title="Editar Caso"
             open={isModalVisible}
