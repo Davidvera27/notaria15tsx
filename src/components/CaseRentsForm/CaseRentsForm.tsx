@@ -41,6 +41,12 @@ type TableData = {
   observaciones?: string;
 };
 
+type Protocolist = {
+  id: number;
+  complete_name: string;
+  last_name: string;
+};
+
 export const CaseRentsForm: React.FC = () => {
   const [componentSize, setComponentSize] = useState<"small" | "middle" | "large">("middle");
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -48,6 +54,7 @@ export const CaseRentsForm: React.FC = () => {
   const [isColumnConfigVisible, setIsColumnConfigVisible] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [data, setData] = useState<TableData[]>([]);
+  const [protocolistOptions, setProtocolistOptions] = useState([]);
   const [editingCase, setEditingCase] = useState<TableData | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(["id", "creation_date", "escritura", "document_date", "radicado", "protocolista", "observaciones"]);
   const [form] = Form.useForm();
@@ -190,8 +197,23 @@ export const CaseRentsForm: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
+    const fetchProtocolists = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/protocolist-rents");
+        const formattedOptions = response.data.map((protocolist: Protocolist) => ({
+          value: protocolist.id, // ID del protocolista
+          label: `${protocolist.complete_name} ${protocolist.last_name}`, // Nombre completo
+        }));
+        setProtocolistOptions(formattedOptions);
+      } catch (error) {
+        console.error("Error fetching protocolists:", error);
+        message.error("Error al cargar los protocolistas");
+      }
+    };
+  
+    fetchProtocolists();
   }, []);
+  
 
   const tableColumns = [
     {
@@ -360,16 +382,13 @@ export const CaseRentsForm: React.FC = () => {
 
                 <Row gutter={16}>
                   <Col span={12}>
-                    <Form.Item
-                      label="Protocolista"
-                      name="protocolista"
-                      rules={[{ required: true, message: "Seleccione un protocolista" }]}
-                    >
-                      <Select placeholder="Seleccione un protocolista">
-                        <Option value="Protocolista 1">Protocolista 1</Option>
-                        <Option value="Protocolista 2">Protocolista 2</Option>
-                      </Select>
-                    </Form.Item>
+                  <Form.Item
+                    label="Protocolista"
+                    name="protocolista"
+                    rules={[{ required: true, message: "Seleccione un protocolista" }]}
+                  >
+                    <Select placeholder="Seleccione un protocolista" options={protocolistOptions} />
+                  </Form.Item>
                   </Col>
                   <Col span={12}>
                     <Form.Item label="Observaciones" name="observaciones">
