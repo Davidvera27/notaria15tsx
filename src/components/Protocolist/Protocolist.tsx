@@ -102,7 +102,7 @@ export const Protocolist: React.FC = () => {
     { title: "Apellidos", dataIndex: "last_name", key: "last_name" },
     { title: "Correo Electrónico", dataIndex: "email", key: "email" },
     { title: "Observaciones", dataIndex: "observations", key: "observations", render: (text: string) => text || "Sin observaciones" },
-    { title: "Casos Activos", dataIndex: "ongoing_case", key: "ongoing_case" }, // New column
+    { title: "Casos Activos", dataIndex: "ongoing_case", key: "ongoing_case" }, // Proyección de casos activos
     {
       title: "Observaciones",
       dataIndex: "observations",
