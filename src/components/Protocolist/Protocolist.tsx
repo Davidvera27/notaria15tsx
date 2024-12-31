@@ -26,7 +26,9 @@ interface ProtocolistData {
   last_name: string;
   email: string;
   observations?: string;
+  ongoing_case: number;
 }
+
 
 export const Protocolist: React.FC = () => {
   const [form] = Form.useForm();
@@ -99,6 +101,8 @@ export const Protocolist: React.FC = () => {
     { title: "Nombre Completo", dataIndex: "complete_name", key: "complete_name" },
     { title: "Apellidos", dataIndex: "last_name", key: "last_name" },
     { title: "Correo Electrónico", dataIndex: "email", key: "email" },
+    { title: "Observaciones", dataIndex: "observations", key: "observations", render: (text: string) => text || "Sin observaciones" },
+    { title: "Casos Activos", dataIndex: "ongoing_case", key: "ongoing_case" }, // New column
     {
       title: "Observaciones",
       dataIndex: "observations",
