@@ -20,7 +20,7 @@ import {
   InputNumber,
   message,
   RadioChangeEvent,
-  Tooltip, // Importar Tooltip aquí
+  Tooltip,
 } from "antd";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { Header } from "../Header/Header";
@@ -64,10 +64,8 @@ export const CaseRentsForm: React.FC = () => {
   const handleModalCancel = () => {
     setIsModalVisible(false);
     setEditingCase(null);
-    form.resetFields(); // Reinicia el formulario
+    form.resetFields();
   };
-
-  <Modal open={isModalVisible} onCancel={handleModalCancel}></Modal>
 
   const fetchData = async () => {
     try {
@@ -82,31 +80,26 @@ export const CaseRentsForm: React.FC = () => {
   const addCaseRent = async (values: TableData) => {
     try {
       const currentDate = dayjs().format("YYYY-MM-DD");
-  
-      // Validar fechas en el frontend
+
       if (values.creation_date > currentDate) {
         return message.error("La fecha de creación no es válida.");
       }
       if (values.document_date > currentDate) {
         return message.error("La fecha del documento no es válida.");
       }
-  
-      // Enviar solicitud al backend
+
       await axios.post("http://localhost:5000/api/case-rents", values);
       fetchData();
       message.success("Caso agregado correctamente");
+      form.resetFields(); // Formatear el formulario
     } catch (error) {
-      // Manejar errores del backend
       if (axios.isAxiosError(error) && error.response?.data?.error) {
-        // Mostrar mensaje detallado del backend
         message.error(error.response.data.error);
       } else {
         message.error("Error al agregar el caso.");
       }
     }
   };
-  
-  
 
   const deleteCaseRent = async (id: number) => {
     try {
@@ -128,8 +121,7 @@ export const CaseRentsForm: React.FC = () => {
       document_date: dayjs(record.document_date),
     });
   };
-  
-  
+
   interface AxiosError {
     response?: {
       data?: {
@@ -137,12 +129,11 @@ export const CaseRentsForm: React.FC = () => {
       };
     };
   }
-  
+
   const updateCaseRent = async (values: Partial<TableData>) => {
     try {
       if (!editingCase) return;
-  
-      // Filtrar los campos que han cambiado
+
       const changedFields = Object.entries(values).reduce((acc, [key, value]) => {
         const currentValue = editingCase[key as keyof TableData];
         if (currentValue !== undefined && currentValue !== value) {
@@ -150,29 +141,25 @@ export const CaseRentsForm: React.FC = () => {
         }
         return acc;
       }, {} as Partial<TableData>);
-  
-      // Construir la observación automáticamente
+
       const observationChanges = Object.entries(changedFields)
         .map(([key, newValue]) => {
           const oldValue = editingCase[key as keyof TableData];
           return `${key}: "${oldValue}" -> "${newValue}"`;
         })
         .join(", ");
-  
-      // Añadir el comentario a las observaciones
+
       const updatedObservations = editingCase.observaciones
         ? `${editingCase.observaciones} | Cambios: ${observationChanges}`
         : `Cambios: ${observationChanges}`;
-  
+
       changedFields.observaciones = updatedObservations;
-  
-      // Si no hay cambios, no realizar la actualización
+
       if (Object.keys(changedFields).length === 0) {
         message.info("No se detectaron cambios para actualizar.");
         return;
       }
-  
-      // Enviar solicitud de actualización al backend
+
       await axios.put(
         `http://localhost:5000/api/case-rents/${editingCase.id}`,
         changedFields
@@ -194,10 +181,6 @@ export const CaseRentsForm: React.FC = () => {
       }
     }
   };
-  
-  
-  
-  
 
   useEffect(() => {
     fetchData();
@@ -240,14 +223,13 @@ export const CaseRentsForm: React.FC = () => {
       title: "Observaciones",
       dataIndex: "observaciones",
       key: "observaciones",
-      ellipsis: true, // Truncar texto
+      ellipsis: true,
       render: (text: string) => (
         <Tooltip title={text}>
           <span>{text}</span>
         </Tooltip>
       ),
-    }
-    ,
+    },
     {
       title: "Acciones",
       key: "acciones",
@@ -267,20 +249,18 @@ export const CaseRentsForm: React.FC = () => {
   ];
 
   const onModalFinish = (values: Partial<TableData>) => {
-    // Asegurarse de que las fechas siempre estén en formato 'YYYY-MM-DD'
     const formattedValues = {
       ...values,
       creation_date: values.creation_date
         ? dayjs(values.creation_date).format("YYYY-MM-DD")
-        : editingCase?.creation_date, // Usar el valor original si no fue editado
+        : editingCase?.creation_date,
       document_date: values.document_date
         ? dayjs(values.document_date).format("YYYY-MM-DD")
-        : editingCase?.document_date, // Usar el valor original si no fue editado
+        : editingCase?.document_date,
     };
-  
+
     updateCaseRent(formattedValues);
   };
-    
 
   const onFinish = (values: Record<string, unknown>) => {
     const formattedValues: Partial<TableData> = {
@@ -292,12 +272,9 @@ export const CaseRentsForm: React.FC = () => {
         ? dayjs(values.document_date as string).format("YYYY-MM-DD")
         : "",
     };
-  
+
     addCaseRent(formattedValues as TableData);
   };
-  
-
-  
 
   return (
     <Layout>
@@ -317,7 +294,8 @@ export const CaseRentsForm: React.FC = () => {
                 layout="vertical"
                 size={componentSize}
                 onFinish={onFinish}
-                initialValues={{}} // No es necesario depender de editingCase aquí
+                form={form} // Vincular el formulario
+                initialValues={{}}
               >
                 <Row gutter={16}>
                   <Col span={12}>
@@ -388,7 +366,6 @@ export const CaseRentsForm: React.FC = () => {
                 </Form.Item>
               </Form>
             </Card>
-
 
             <Card title={<Title level={5}>Información de Radicados de Rentas</Title>}>
               <Table columns={tableColumns} dataSource={data} pagination={{ pageSize }} rowKey="id" />
@@ -478,11 +455,11 @@ export const CaseRentsForm: React.FC = () => {
                 >
                   <Input
                     placeholder="Ej: 12345"
-                    maxLength={5} // Limita el número de caracteres a 5
+                    maxLength={5}
                     onChange={(e) => {
-                      const value = e.target.value.trim(); // Elimina espacios antes o después
-                      const sanitizedValue = value.replace(/[^0-9]/g, ""); // Elimina caracteres no numéricos
-                      e.target.value = sanitizedValue; // Establece el valor filtrado
+                      const value = e.target.value.trim();
+                      const sanitizedValue = value.replace(/[^0-9]/g, "");
+                      e.target.value = sanitizedValue;
                     }}
                   />
                 </Form.Item>
