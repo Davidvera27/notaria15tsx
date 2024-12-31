@@ -7,7 +7,22 @@ router.post('/case-rents', (req, res) => {
     const { creation_date, document_date, escritura, radicado, protocolista, observaciones } = req.body;
     const last_modified = new Date().toISOString();
 
-    // Validación 1: Verificar si el radicado ya existe
+    const currentDate = new Date().toISOString().split("T")[0]; // Fecha actual (YYYY-MM-DD)
+
+    // Validación 1: Verificar si escritura cumple con el formato
+    if (!/^[0-9]{1,5}$/.test(escritura)) {
+        return res.status(400).json({ error: "La escritura debe ser un número de hasta 5 dígitos sin caracteres especiales o letras." });
+    }
+
+    // Validación 2: Verificar si las fechas son válidas
+    if (creation_date > currentDate) {
+        return res.status(400).json({ error: "La fecha de creación no es válida." });
+    }
+    if (document_date > currentDate) {
+        return res.status(400).json({ error: "La fecha del documento no es válida." });
+    }
+
+    // Validación 3: Verificar si el radicado ya existe
     const radicadoQuery = 'SELECT id, protocolista FROM case_rents WHERE radicado = ?';
     db.get(radicadoQuery, [radicado], (err, row) => {
         if (err) {
@@ -15,19 +30,19 @@ router.post('/case-rents', (req, res) => {
         }
         if (row) {
             return res.status(400).json({
-                error: `El radicado ya existe en la fila ${row.id} y pertenece al protocolista ${row.protocolista}.`,
+                error: `El radicado que intenta agregar, ya existe y se encuentra creado en la fila ${row.id} y corresponde al protocolista ${row.protocolista}.`,
             });
         }
 
-        // Validación 2: Verificar si escritura y fecha del documento ya existen
-        const escrituraQuery = 'SELECT id FROM case_rents WHERE escritura = ? AND document_date = ?';
+        // Validación 4: Verificar si escritura y fecha del documento ya existen
+        const escrituraQuery = 'SELECT id, protocolista FROM case_rents WHERE escritura = ? AND document_date = ?';
         db.get(escrituraQuery, [escritura, document_date], (err, row) => {
             if (err) {
                 return res.status(500).json({ error: "Error al verificar la escritura y la fecha del documento." });
             }
             if (row) {
                 return res.status(400).json({
-                    error: "La combinación de escritura y fecha del documento ya existe.",
+                    error: `La escritura que intenta agregar, ya existe y se encuentra creada en la fila ${row.id} y corresponde al protocolista ${row.protocolista}.`,
                 });
             }
 
@@ -45,6 +60,7 @@ router.post('/case-rents', (req, res) => {
         });
     });
 });
+
 
 // READ
 router.get('/case-rents', (req, res) => {
@@ -76,16 +92,14 @@ router.put('/case-rents/:id', (req, res) => {
         }
 
         // Validación 2: Verificar duplicado de escritura + fecha del documento
-        const escrituraQuery = `
-            SELECT id, protocolista FROM case_rents 
-            WHERE escritura = ? AND document_date = ? AND id != ?`;
-        db.get(escrituraQuery, [escritura, document_date, id], (err, row) => {
+        const escrituraQuery = 'SELECT id, protocolista FROM case_rents WHERE escritura = ? AND document_date = ?';
+        db.get(escrituraQuery, [escritura, document_date], (err, row) => {
             if (err) {
-                return res.status(500).json({ error: "Error al verificar escritura y fecha del documento." });
+                return res.status(500).json({ error: "Error al verificar la escritura y la fecha del documento." });
             }
             if (row) {
                 return res.status(400).json({
-                    error: `La combinación de escritura ${escritura} y fecha del documento ${document_date} ya existe en la fila ${row.id} con el protocolista ${row.protocolista}.`,
+                    error: `La escritura que intenta agregar, ya existe y se encuentra creada en la fila ${row.id} y corresponde al protocolista ${row.protocolista}.`,
                 });
             }
 
