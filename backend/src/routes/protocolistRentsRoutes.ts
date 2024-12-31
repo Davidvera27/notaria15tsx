@@ -29,26 +29,22 @@ router.post('/protocolist-rents', (req: Request, res: Response) => {
 
   
 // READ all protocolists
-router.get("/protocolist-rents", async (req: Request, res: Response) => {
-    try {
-      const query = `
-        SELECT 
-          pr.*, 
-          (SELECT COUNT(*) FROM case_rents WHERE case_rents.protocolista = pr.complete_name) AS ongoing_case 
-        FROM protocolist_rents pr;
-      `;
-      db.all(query, [], (err, rows) => {
+router.get("/protocolist-rents", async (req, res) => {
+    const query = `
+        SELECT protocolist_rents.*, 
+        (SELECT COUNT(*) FROM case_rents WHERE protocolista = protocolist_rents.complete_name || ' ' || protocolist_rents.last_name) AS ongoing_case
+        FROM protocolist_rents;
+    `;
+    db.all(query, [], (err, rows) => {
         if (err) {
-          console.error("Error fetching protocolist rents:", err);
-          return res.status(500).json({ error: "Error fetching protocolist rents" });
+            console.error("Error fetching protocolists:", err);
+            res.status(500).send("Error fetching protocolists");
+        } else {
+            res.json(rows);
         }
-        res.status(200).json(rows);
-      });
-    } catch (error) {
-      console.error("Error in GET /protocolist-rents:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    });
+});
+
   
 
 
