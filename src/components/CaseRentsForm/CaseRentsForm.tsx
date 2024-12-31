@@ -295,7 +295,9 @@ export const CaseRentsForm: React.FC = () => {
                 size={componentSize}
                 onFinish={onFinish}
                 form={form} // Vincular el formulario
-                initialValues={{}}
+                initialValues={{
+                  creation_date: dayjs(), // Establecer la fecha actual como valor inicial
+                }}
               >
                 <Row gutter={16}>
                   <Col span={12}>
@@ -304,7 +306,7 @@ export const CaseRentsForm: React.FC = () => {
                       name="creation_date"
                       rules={[{ required: true, message: "Seleccione una fecha" }]}
                     >
-                      <DatePicker style={{ width: "100%" }} />
+                      <DatePicker style={{ width: "100%" }} defaultValue={dayjs()} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
