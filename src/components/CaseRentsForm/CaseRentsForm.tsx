@@ -81,28 +81,32 @@ export const CaseRentsForm: React.FC = () => {
 
   const addCaseRent = async (values: TableData) => {
     try {
-      // Validar duplicación antes de enviar
-      const isDuplicate = data.some(
-        (item) =>
-          item.escritura === values.escritura ||
-          item.radicado === values.radicado
-      );
+      const currentDate = dayjs().format("YYYY-MM-DD");
   
-      if (isDuplicate) {
-        message.error(
-          "Ya existe un caso con el mismo número de escritura o radicado."
-        );
-        return;
+      // Validar fechas en el frontend
+      if (values.creation_date > currentDate) {
+        return message.error("La fecha de creación no es válida.");
+      }
+      if (values.document_date > currentDate) {
+        return message.error("La fecha del documento no es válida.");
       }
   
+      // Enviar solicitud al backend
       await axios.post("http://localhost:5000/api/case-rents", values);
       fetchData();
       message.success("Caso agregado correctamente");
     } catch (error) {
-      console.error("Error adding case:", error);
-      message.error("Error al agregar el caso");
+      // Manejar errores del backend
+      if (axios.isAxiosError(error) && error.response?.data?.error) {
+        // Mostrar mensaje detallado del backend
+        message.error(error.response.data.error);
+      } else {
+        message.error("Error al agregar el caso.");
+      }
     }
   };
+  
+  
 
   const deleteCaseRent = async (id: number) => {
     try {
@@ -280,20 +284,18 @@ export const CaseRentsForm: React.FC = () => {
 
   const onFinish = (values: Record<string, unknown>) => {
     const formattedValues: Partial<TableData> = {
-        ...values,
-        creation_date: values.creation_date
-            ? dayjs(values.creation_date as string).format("YYYY-MM-DD")
-            : "",
-        document_date: values.document_date
-            ? dayjs(values.document_date as string).format("YYYY-MM-DD")
-            : "",
+      ...values,
+      creation_date: values.creation_date
+        ? dayjs(values.creation_date as string).format("YYYY-MM-DD")
+        : "",
+      document_date: values.document_date
+        ? dayjs(values.document_date as string).format("YYYY-MM-DD")
+        : "",
     };
-    if (editingCase) {
-        updateCaseRent({ ...editingCase, ...formattedValues });
-    } else {
-        addCaseRent(formattedValues as TableData);
-    }
-};
+  
+    addCaseRent(formattedValues as TableData);
+  };
+  
 
   
 
@@ -310,12 +312,12 @@ export const CaseRentsForm: React.FC = () => {
             <Breadcrumb.Item>Radicados de Rentas</Breadcrumb.Item>
           </Breadcrumb>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <Card title={<Title level={5}>Crear o Editar Caso</Title>}>
+            <Card title={<Title level={5}>Crear Caso</Title>}>
               <Form
                 layout="vertical"
                 size={componentSize}
                 onFinish={onFinish}
-                initialValues={editingCase || {}}
+                initialValues={{}} // No es necesario depender de editingCase aquí
               >
                 <Row gutter={16}>
                   <Col span={12}>
@@ -380,12 +382,13 @@ export const CaseRentsForm: React.FC = () => {
                 </Row>
 
                 <Form.Item>
-                <Button type="primary" htmlType="submit">
+                  <Button type="primary" htmlType="submit">
                     Agregar Caso
                   </Button>
                 </Form.Item>
               </Form>
             </Card>
+
 
             <Card title={<Title level={5}>Información de Radicados de Rentas</Title>}>
               <Table columns={tableColumns} dataSource={data} pagination={{ pageSize }} rowKey="id" />
@@ -462,13 +465,28 @@ export const CaseRentsForm: React.FC = () => {
               </Row>
               <Row gutter={16}>
                 <Col span={12}>
-                  <Form.Item
-                    label="Escritura"
-                    name="escritura"
-                    rules={[{ required: true, message: "Ingrese el número de escritura" }]}
-                  >
-                    <Input placeholder="Ej: 12345" />
-                  </Form.Item>
+                <Form.Item
+                  label="Escritura"
+                  name="escritura"
+                  rules={[
+                    { required: true, message: "Ingrese el número de escritura" },
+                    {
+                      pattern: /^[0-9]{1,5}$/,
+                      message: "La escritura debe ser un número de hasta 5 dígitos sin caracteres especiales o letras.",
+                    },
+                  ]}
+                >
+                  <Input
+                    placeholder="Ej: 12345"
+                    maxLength={5} // Limita el número de caracteres a 5
+                    onChange={(e) => {
+                      const value = e.target.value.trim(); // Elimina espacios antes o después
+                      const sanitizedValue = value.replace(/[^0-9]/g, ""); // Elimina caracteres no numéricos
+                      e.target.value = sanitizedValue; // Establece el valor filtrado
+                    }}
+                  />
+                </Form.Item>
+
                 </Col>
                 <Col span={12}>
                   <Form.Item
