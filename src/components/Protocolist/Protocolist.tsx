@@ -40,19 +40,25 @@ export const Protocolist: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      setLoading(true);
-      const response = await axios.get<ProtocolistData[]>("http://localhost:5000/api/protocolist-rents");
-      setTableData(response.data);
-    } catch {
-      notification.error({
-        message: "Error al cargar datos",
-        description: "No se pudo cargar la lista de protocolistas.",
-      });
+        setLoading(true);
+        const response = await axios.get<ProtocolistData[]>("http://localhost:5000/api/protocolist-rents");
+        setTableData(response.data);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            notification.error({
+                message: "Error al cargar datos",
+                description: error.message || "No se pudo cargar la lista de protocolistas.",
+            });
+        } else {
+            notification.error({
+                message: "Error al cargar datos",
+                description: "Ocurrió un error desconocido.",
+            });
+        }
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
-  
+};
 
   useEffect(() => {
     fetchData();
@@ -128,26 +134,28 @@ export const Protocolist: React.FC = () => {
 
   const tableColumns = [
     { title: "Id", dataIndex: "id", key: "id" },
+    { title: "Fecha de Creación", dataIndex: "creation_date", key: "creation_date" },
     { title: "Nombre Completo", dataIndex: "complete_name", key: "complete_name" },
     { title: "Apellidos", dataIndex: "last_name", key: "last_name" },
     { title: "Correo Electrónico", dataIndex: "email", key: "email" },
     { title: "Observaciones", dataIndex: "observations", key: "observations", render: (text: string) => text || "Sin observaciones" },
     { title: "Casos Activos", dataIndex: "ongoing_case", key: "ongoing_case" },
     {
-      title: "Acciones",
-      key: "actions",
-      render: (_: unknown, record: ProtocolistData) => (
-        <Space>
-          <Button type="link" onClick={() => openEditModal(record)}>
-            Editar
-          </Button>
-          <Button type="link" onClick={() => deleteProtocolist(record.id)}>
-            Eliminar
-          </Button>
-        </Space>
-      ),
+        title: "Acciones",
+        key: "actions",
+        render: (_: unknown, record: ProtocolistData) => (
+            <Space>
+                <Button type="link" onClick={() => openEditModal(record)}>
+                    Editar
+                </Button>
+                <Button type="link" onClick={() => deleteProtocolist(record.id)}>
+                    Eliminar
+                </Button>
+            </Space>
+        ),
     },
-  ];
+];
+
 
   const handleModalFinish = (values: Partial<ProtocolistData>) => {
     updateProtocolist(values);
