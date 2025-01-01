@@ -61,7 +61,6 @@ export const Protocolist: React.FC = () => {
 
   const handleSubmit = async (values: ProtocolistData) => {
     try {
-      console.log("Adding protocolist:", values);
       await axios.post("http://localhost:5000/api/protocolist-rents", values);
       notification.success({
         message: "Protocolista agregado",
@@ -70,15 +69,20 @@ export const Protocolist: React.FC = () => {
       form.resetFields();
       fetchData();
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error("Error adding protocolist:", error.message);
+      if (axios.isAxiosError(error) && error.response?.data?.error) {
         notification.error({
           message: "Error",
-          description: error.message || "No se pudo agregar el protocolista.",
+          description: error.response.data.error,
+        });
+      } else {
+        notification.error({
+          message: "Error",
+          description: "No se pudo agregar el protocolista.",
         });
       }
     }
   };
+  
 
   const deleteProtocolist = async (id: number) => {
     try {
@@ -122,6 +126,8 @@ export const Protocolist: React.FC = () => {
     },
   ];
 
+  
+
   return (
     <Layout>
       <Header />
@@ -146,7 +152,15 @@ export const Protocolist: React.FC = () => {
                     <Form.Item
                       label="Nombre Completo"
                       name="complete_name"
-                      rules={[{ required: true, message: "Ingrese el nombre completo del protocolista" }]}
+                      rules={[
+                        { required: true, message: "Ingrese el nombre completo del protocolista" },
+                        { min: 3, message: "El nombre debe tener al menos 3 caracteres" },
+                        { max: 50, message: "El nombre no puede exceder los 50 caracteres" },
+                        {
+                          pattern: /^[a-zA-Z\s]+$/,
+                          message: "El nombre solo puede contener letras y espacios",
+                        },
+                      ]}
                     >
                       <Input placeholder="Nombre completo" />
                     </Form.Item>
@@ -155,7 +169,15 @@ export const Protocolist: React.FC = () => {
                     <Form.Item
                       label="Apellidos"
                       name="last_name"
-                      rules={[{ required: true, message: "Ingrese los apellidos del protocolista" }]}
+                      rules={[
+                        { required: true, message: "Ingrese los apellidos del protocolista" },
+                        { min: 3, message: "Los apellidos deben tener al menos 3 caracteres" },
+                        { max: 50, message: "Los apellidos no pueden exceder los 50 caracteres" },
+                        {
+                          pattern: /^[a-zA-Z\s]+$/,
+                          message: "Los apellidos solo pueden contener letras y espacios",
+                        },
+                      ]}
                     >
                       <Input placeholder="Apellidos" />
                     </Form.Item>
@@ -168,7 +190,22 @@ export const Protocolist: React.FC = () => {
                       name="email"
                       rules={[
                         { required: true, message: "Ingrese el correo electrónico" },
-                        { type: "email", message: "Ingrese un correo electrónico válido" },
+                        {
+                          pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+                          message: "Ingrese un correo electrónico válido",
+                        },
+                        {
+                          validator: async (_, value) => {
+                            if (value) {
+                              const response = await axios.get(
+                                `http://localhost:5000/api/protocolist-rents/check-email/${value}`
+                              );
+                              if (response.data.exists) {
+                                throw new Error("Este correo ya está registrado");
+                              }
+                            }
+                          },
+                        },
                       ]}
                     >
                       <Input placeholder="Correo electrónico" />
