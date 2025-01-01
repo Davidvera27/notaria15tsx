@@ -1,102 +1,126 @@
-import { Router, Request, Response } from "express";
-import db from "../database/db"; // Import database connection
+import express from 'express';
+import db from '../database/db';
 
-const router = Router();
+const router = express.Router();
 
-// CREATE a protocolist
-router.post('/protocolist-rents', (req: Request, res: Response) => {
-    const { complete_name, last_name, email, observations } = req.body;
+type Protocolist = {
+  id: number;
+  complete_name: string;
+  last_name: string;
+  email: string;
+  observations?: string | null;
+};
 
-    // Usar la fecha actual como valor predeterminado para creation_date
-    const creation_date = new Date().toISOString();
-
-    const query = `
-        INSERT INTO protocolist_rents (complete_name, last_name, email, observations, creation_date)
-        VALUES (?, ?, ?, ?, ?)
-    `;
-
-    db.run(query, [complete_name, last_name, email, observations || null, creation_date], function (err) {
-        if (err) {
-            console.error('Error while inserting into protocolist_rents:', err.message);
-            return res.status(500).json({ error: 'Error al crear el protocolista', details: err.message });
-        }
-
-        res.status(201).json({ id: this.lastID });
-    });
-});
-
-
-
-  
-// READ all protocolists
-router.get("/protocolist-rents", async (req, res) => {
-    const query = `
-        SELECT protocolist_rents.*, 
-        (SELECT COUNT(*) FROM case_rents WHERE protocolista = protocolist_rents.complete_name || ' ' || protocolist_rents.last_name) AS ongoing_case
-        FROM protocolist_rents;
-    `;
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            console.error("Error fetching protocolists:", err);
-            res.status(500).send("Error fetching protocolists");
-        } else {
-            res.json(rows);
-        }
-    });
-});
-
-router.get('/api/protocolist-rents', async (req, res) => {
-  try {
-    const query = `
-      SELECT * FROM protocolist_rents
-      ORDER BY id ASC;
-    `;
-    const results = await db.all(query);
-    res.json(results);
-  } catch (error) {
-    console.error('Error fetching protocolists:', error);
-    res.status(500).json({ error: 'Error al obtener los protocolistas.' });
-  }
-});
-
-  
-  
-
-
-// UPDATE a protocolist
-router.put("/protocolist-rents/:id", (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { complete_name, last_name, email, observations } = req.body;
-
-  const query = `
-    UPDATE protocolist_rents
-    SET complete_name = ?, last_name = ?, email = ?, observations = ?
-    WHERE id = ?
-  `;
-  db.run(query, [complete_name, last_name, email, observations || null, id], function (err) {
+// Obtener todos los protocolistas
+router.get('/protocolist-rents', (req, res) => {
+  db.all<Protocolist[]>('SELECT * FROM protocolist_rents', [], (err, rows) => {
     if (err) {
-      return res.status(500).json({ error: "Error al actualizar el protocolista" });
+      console.error('Error al obtener los protocolistas:', err.message);
+      return res.status(500).json({ error: 'Error interno del servidor' });
     }
-    if (this.changes === 0) {
-      return res.status(404).json({ error: "Protocolista no encontrado" });
-    }
-    res.status(200).json({ updatedRows: this.changes });
+    res.json(rows);
   });
 });
 
-// DELETE a protocolist
-router.delete("/protocolist-rents/:id", (req: Request, res: Response) => {
+// Verificar si un correo electrónico ya existe
+router.get('/protocolist-rents/check-email/:email', (req, res) => {
+  const { email } = req.params;
+  db.get<{ count: number }>(
+    'SELECT COUNT(*) AS count FROM protocolist_rents WHERE email = ?',
+    [email],
+    (err, row) => {
+      if (err) {
+        console.error('Error al verificar correo:', err.message);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+      res.json({ exists: row?.count > 0 });
+    }
+  );
+});
+
+// Crear un nuevo protocolista
+router.post('/protocolist-rents', (req, res) => {
+  const { complete_name, last_name, email, observations } = req.body;
+
+  // Validaciones
+  if (!complete_name || complete_name.length < 3 || complete_name.length > 50) {
+    return res.status(400).json({ error: 'El nombre debe tener entre 3 y 50 caracteres' });
+  }
+  if (!last_name || last_name.length < 3 || last_name.length > 50) {
+    return res.status(400).json({ error: 'Los apellidos deben tener entre 3 y 50 caracteres' });
+  }
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!email || !emailRegex.test(email)) {
+    return res.status(400).json({ error: 'El correo electrónico no es válido' });
+  }
+
+  db.run(
+    'INSERT INTO protocolist_rents (complete_name, last_name, email, observations) VALUES (?, ?, ?, ?)',
+    [complete_name, last_name, email, observations || null],
+    function (err) {
+      if (err) {
+        console.error('Error al crear el protocolista:', err.message);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+      res.status(201).json({ message: 'Protocolista creado con éxito', id: this.lastID });
+    }
+  );
+});
+
+// Actualizar un protocolista
+router.put('/protocolist-rents/:id', (req, res) => {
+  const { id } = req.params;
+  const { complete_name, last_name, email, observations } = req.body;
+
+  db.get<Protocolist>('SELECT * FROM protocolist_rents WHERE id = ?', [id], (err, protocolist) => {
+    if (err) {
+      console.error('Error al buscar el protocolista:', err.message);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+    if (!protocolist) {
+      return res.status(404).json({ error: 'Protocolista no encontrado' });
+    }
+
+    db.run(
+      'UPDATE protocolist_rents SET complete_name = ?, last_name = ?, email = ?, observations = ? WHERE id = ?',
+      [
+        complete_name || protocolist.complete_name,
+        last_name || protocolist.last_name,
+        email || protocolist.email,
+        observations || protocolist.observations,
+        id,
+      ],
+      (err) => {
+        if (err) {
+          console.error('Error al actualizar el protocolista:', err.message);
+          return res.status(500).json({ error: 'Error interno del servidor' });
+        }
+        res.json({ message: 'Protocolista actualizado con éxito' });
+      }
+    );
+  });
+});
+
+// Eliminar un protocolista
+router.delete('/protocolist-rents/:id', (req, res) => {
   const { id } = req.params;
 
-  const query = "DELETE FROM protocolist_rents WHERE id = ?";
-  db.run(query, [id], function (err) {
+  db.get<Protocolist>('SELECT * FROM protocolist_rents WHERE id = ?', [id], (err, protocolist) => {
     if (err) {
-      return res.status(500).json({ error: "Error al eliminar el protocolista" });
+      console.error('Error al buscar el protocolista:', err.message);
+      return res.status(500).json({ error: 'Error interno del servidor' });
     }
-    if (this.changes === 0) {
-      return res.status(404).json({ error: "Protocolista no encontrado" });
+    if (!protocolist) {
+      return res.status(404).json({ error: 'Protocolista no encontrado' });
     }
-    res.status(200).json({ deletedRows: this.changes });
+
+    db.run('DELETE FROM protocolist_rents WHERE id = ?', [id], (err) => {
+      if (err) {
+        console.error('Error al eliminar el protocolista:', err.message);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+      res.json({ message: 'Protocolista eliminado con éxito' });
+    });
   });
 });
 
