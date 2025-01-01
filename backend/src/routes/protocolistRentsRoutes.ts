@@ -11,31 +11,45 @@ type Protocolist = {
   observations?: string | null;
 };
 
-// Obtener todos los protocolistas
-router.get('/protocolist-rents', (req, res) => {
-  db.all<Protocolist[]>('SELECT * FROM protocolist_rents', [], (err, rows) => {
-    if (err) {
-      console.error('Error al obtener los protocolistas:', err.message);
-      return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-    res.json(rows);
-  });
-});
+// Ruta unificada para actualizar los casos activos y obtener todos los protocolistas
+router.get("/protocolist-rents", (req, res) => {
+  const updateOngoingCasesQuery = `
+    UPDATE protocolist_rents
+    SET ongoing_case = (
+      SELECT COUNT(*)
+      FROM case_rents
+      WHERE case_rents.protocolista = protocolist_rents.id
+    )
+  `;
 
-// Verificar si un correo electrónico ya existe
-router.get('/protocolist-rents/check-email/:email', (req, res) => {
-  const { email } = req.params;
-  db.get<{ count: number }>(
-    'SELECT COUNT(*) AS count FROM protocolist_rents WHERE email = ?',
-    [email],
-    (err, row) => {
-      if (err) {
-        console.error('Error al verificar correo:', err.message);
-        return res.status(500).json({ error: 'Error interno del servidor' });
-      }
-      res.json({ exists: row?.count > 0 });
+  // Actualizar los casos activos
+  db.run(updateOngoingCasesQuery, [], (updateErr) => {
+    if (updateErr) {
+      console.error("Error al actualizar los casos activos:", updateErr.message);
+      return res.status(500).json({ error: "Error interno del servidor" });
     }
-  );
+
+    // Obtener todos los protocolistas después de actualizar los casos activos
+    const selectQuery = `
+      SELECT
+        id,
+        creation_date,
+        complete_name,
+        last_name,
+        email,
+        observations,
+        ongoing_case
+      FROM protocolist_rents
+    `;
+
+    db.all(selectQuery, [], (err, rows) => {
+      if (err) {
+        console.error("Error al obtener los protocolistas:", err.message);
+        return res.status(500).json({ error: "Error interno del servidor" });
+      }
+      res.json(rows);
+    });
+  });
 });
 
 // Crear un nuevo protocolista
@@ -101,6 +115,25 @@ router.put('/protocolist-rents/:id', (req, res) => {
   });
 });
 
+// Endpoint para actualizar los casos activos
+router.put("/protocolist-rents/update-cases", (req, res) => {
+  const updateQuery = `
+    UPDATE protocolist_rents
+    SET ongoing_case = (
+      SELECT COUNT(*)
+      FROM case_rents
+      WHERE case_rents.protocolista = protocolist_rents.id
+    )
+  `;
+
+  db.run(updateQuery, [], (err) => {
+    if (err) {
+      console.error("Error al actualizar los casos activos:", err.message);
+      return res.status(500).json({ error: "Error interno del servidor" });
+    }
+    res.json({ message: "Casos activos actualizados con éxito" });
+  });
+});
 // Eliminar un protocolista
 router.delete('/protocolist-rents/:id', (req, res) => {
   const { id } = req.params;
