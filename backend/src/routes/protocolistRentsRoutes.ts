@@ -45,16 +45,20 @@ router.get("/protocolist-rents", async (req, res) => {
     });
 });
 
-router.get("/api/protocolist-rents", async (req, res) => {
-    const query = "SELECT id, complete_name, last_name FROM protocolist_rents";
-  
-    db.all(query, [], (err, rows) => {
-      if (err) {
-        return res.status(500).json({ error: "Error al obtener los protocolistas" });
-      }
-      res.json(rows); // Devuelve una lista de protocolistas
-    });
-  });
+router.get('/api/protocolist-rents', async (req, res) => {
+  try {
+    const query = `
+      SELECT * FROM protocolist_rents
+      ORDER BY id ASC;
+    `;
+    const results = await db.all(query);
+    res.json(results);
+  } catch (error) {
+    console.error('Error fetching protocolists:', error);
+    res.status(500).json({ error: 'Error al obtener los protocolistas.' });
+  }
+});
+
   
   
 
