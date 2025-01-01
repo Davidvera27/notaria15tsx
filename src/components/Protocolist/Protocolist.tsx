@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
   Breadcrumb,
   Button,
@@ -6,48 +7,102 @@ import {
   Form,
   Input,
   Layout,
-  Select,
   Table,
   Typography,
-  Radio,
   Space,
   Row,
   Col,
-  InputNumber,
-  RadioChangeEvent,
+  notification,
 } from "antd";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { Header } from "../Header/Header";
 
 const { Content, Sider } = Layout;
-const { Title, Text } = Typography;
-const { Option } = Select;
+const { Title } = Typography;
 
 interface ProtocolistData {
-  key: number;
   id: number;
-  name: string;
+  complete_name: string;
+  last_name: string;
   email: string;
-  activeCases: number;
-  state: string;
   observations?: string;
+  ongoing_case: number;
 }
 
-export const Protocolist: React.FC = () => {
-  const [componentSize, setComponentSize] = useState<"small" | "middle" | "large">("middle");
-  const [pageSize, setPageSize] = useState<number>(10);
-  const [tableData,] = useState<ProtocolistData[]>([]); // Inicialización vacía
 
-  const handleFormLayoutChange = (e: RadioChangeEvent) => {
-    setComponentSize(e.target.value as "small" | "middle" | "large");
+export const Protocolist: React.FC = () => {
+  const [form] = Form.useForm();
+  const [tableData, setTableData] = useState<ProtocolistData[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      console.log("Fetching data from /api/protocolist-rents...");
+      const response = await axios.get<ProtocolistData[]>("http://localhost:5000/api/protocolist-rents");
+      console.log("Data fetched successfully:", response.data);
+      setTableData(response.data);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error("Error fetching data:", error.message);
+        notification.error({
+          message: "Error al cargar datos",
+          description: error.message || "No se pudo cargar la lista de protocolistas.",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleSubmit = async (values: ProtocolistData) => {
+    try {
+      console.log("Adding protocolist:", values);
+      await axios.post("http://localhost:5000/api/protocolist-rents", values);
+      notification.success({
+        message: "Protocolista agregado",
+        description: "El nuevo protocolista ha sido agregado exitosamente.",
+      });
+      form.resetFields();
+      fetchData();
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error("Error adding protocolist:", error.message);
+        notification.error({
+          message: "Error",
+          description: error.message || "No se pudo agregar el protocolista.",
+        });
+      }
+    }
+  };
+
+  const deleteProtocolist = async (id: number) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/protocolist-rents/${id}`);
+      notification.success({
+        message: "Protocolista eliminado",
+        description: "El protocolista ha sido eliminado exitosamente.",
+      });
+      fetchData();
+    } catch {
+      notification.error({
+        message: "Error",
+        description: "No se pudo eliminar el protocolista.",
+      });
+    }
   };
 
   const tableColumns = [
     { title: "Id", dataIndex: "id", key: "id" },
-    { title: "Nombre Completo", dataIndex: "name", key: "name" },
+    { title: "Nombre Completo", dataIndex: "complete_name", key: "complete_name" },
+    { title: "Apellidos", dataIndex: "last_name", key: "last_name" },
     { title: "Correo Electrónico", dataIndex: "email", key: "email" },
-    { title: "Estado", dataIndex: "state", key: "state" },
-    { title: "Casos Activos", dataIndex: "activeCases", key: "activeCases" },
+    { title: "Observaciones", dataIndex: "observations", key: "observations", render: (text: string) => text || "Sin observaciones" },
+    { title: "Casos Activos", dataIndex: "ongoing_case", key: "ongoing_case" }, // Proyección de casos activos
     {
       title: "Observaciones",
       dataIndex: "observations",
@@ -57,10 +112,11 @@ export const Protocolist: React.FC = () => {
     {
       title: "Acciones",
       key: "actions",
-      render: () => (
+      render: (_: unknown, record: ProtocolistData) => (
         <Space>
-          <Button type="link">Editar</Button>
-          <Button type="link">Eliminar</Button>
+          <Button type="link" onClick={() => deleteProtocolist(record.id)}>
+            Eliminar
+          </Button>
         </Space>
       ),
     },
@@ -79,45 +135,48 @@ export const Protocolist: React.FC = () => {
             <Breadcrumb.Item>Protocolistas</Breadcrumb.Item>
           </Breadcrumb>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            {/* Primera tarjeta */}
             <Card title={<Title level={5}>Crear nuevo protocolista</Title>}>
-              <Form layout="vertical" size={componentSize}>
+              <Form
+                form={form}
+                layout="vertical"
+                onFinish={handleSubmit}
+              >
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item
-                      label="Nombre"
-                      name="nombre"
-                      rules={[{ required: true, message: "Ingrese el nombre del protocolista" }]}
+                      label="Nombre Completo"
+                      name="complete_name"
+                      rules={[{ required: true, message: "Ingrese el nombre completo del protocolista" }]}
                     >
                       <Input placeholder="Nombre completo" />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
                     <Form.Item
-                      label="Correo Electrónico"
-                      name="correo"
-                      rules={[{ required: true, message: "Ingrese el correo electrónico" }]}
+                      label="Apellidos"
+                      name="last_name"
+                      rules={[{ required: true, message: "Ingrese los apellidos del protocolista" }]}
                     >
-                      <Input placeholder="Correo electrónico" />
+                      <Input placeholder="Apellidos" />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item
-                      label="Estado"
-                      name="state"
-                      rules={[{ required: true, message: "Seleccione el estado" }]}
+                      label="Correo Electrónico"
+                      name="email"
+                      rules={[
+                        { required: true, message: "Ingrese el correo electrónico" },
+                        { type: "email", message: "Ingrese un correo electrónico válido" },
+                      ]}
                     >
-                      <Select placeholder="Seleccione el estado">
-                        <Option value="Activo">Activo</Option>
-                        <Option value="Inactivo">Inactivo</Option>
-                      </Select>
+                      <Input placeholder="Correo electrónico" />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
                     <Form.Item label="Observaciones" name="observations">
-                      <Input.TextArea placeholder="Observaciones adicionales" />
+                      <Input.TextArea placeholder="Observaciones adicionales (opcional)" />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -129,41 +188,14 @@ export const Protocolist: React.FC = () => {
               </Form>
             </Card>
 
-            {/* Segunda tarjeta */}
             <Card title={<Title level={5}>Protocolistas</Title>}>
               <Table
                 columns={tableColumns}
-                dataSource={tableData} // Ahora espera datos dinámicos
-                pagination={{ pageSize, total: tableData.length }}
-                scroll={{ x: 1000 }}
+                dataSource={tableData}
+                loading={loading}
+                pagination={{ pageSize: 10, total: tableData.length }}
+                rowKey="id"
               />
-            </Card>
-
-            {/* Tercera tarjeta */}
-            <Card title={<Title level={5}>Configuración</Title>}>
-              <Text>Número de protocolistas: {tableData.length}</Text>
-              <div style={{ marginTop: "16px" }}>
-                <Text>Tamaño del formulario:</Text>
-                <Radio.Group
-                  onChange={handleFormLayoutChange}
-                  value={componentSize}
-                  style={{ marginLeft: "8px" }}
-                >
-                  <Radio value="small">Pequeño</Radio>
-                  <Radio value="middle">Mediano</Radio>
-                  <Radio value="large">Grande</Radio>
-                </Radio.Group>
-              </div>
-              <div style={{ marginTop: "16px" }}>
-                <Text>Paginación:</Text>
-                <InputNumber
-                  min={5}
-                  max={50}
-                  value={pageSize}
-                  onChange={(value) => setPageSize(value || 10)}
-                  style={{ marginLeft: "8px" }}
-                />
-              </div>
             </Card>
           </div>
         </Content>

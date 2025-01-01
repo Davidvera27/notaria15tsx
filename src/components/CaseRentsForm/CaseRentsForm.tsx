@@ -29,7 +29,6 @@ import dayjs from "dayjs";
 
 const { Content, Sider } = Layout;
 const { Title, Text } = Typography;
-const { Option } = Select;
 
 type TableData = {
   id: number;
@@ -41,6 +40,12 @@ type TableData = {
   observaciones?: string;
 };
 
+type Protocolist = {
+  id: number;
+  complete_name: string;
+  last_name: string;
+};
+
 export const CaseRentsForm: React.FC = () => {
   const [componentSize, setComponentSize] = useState<"small" | "middle" | "large">("middle");
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -48,7 +53,9 @@ export const CaseRentsForm: React.FC = () => {
   const [isColumnConfigVisible, setIsColumnConfigVisible] = useState(false);
   const [pageSize, setPageSize] = useState(10);
   const [data, setData] = useState<TableData[]>([]);
+  const [protocolistOptions, setProtocolistOptions] = useState([]);
   const [editingCase, setEditingCase] = useState<TableData | null>(null);
+  const [protocolistMap, setProtocolistMap] = useState<Record<number, string>>({});
   const [visibleColumns, setVisibleColumns] = useState<string[]>(["id", "creation_date", "escritura", "document_date", "radicado", "protocolista", "observaciones"]);
   const [form] = Form.useForm();
 
@@ -77,12 +84,16 @@ export const CaseRentsForm: React.FC = () => {
   const fetchData = async () => {
     try {
       const response = await axios.get("http://localhost:5000/api/case-rents");
-      setData(response.data);
+      console.log("Data fetched:", response.data); // Para depuración
+      setData(response.data); // Actualiza los datos de la tabla
     } catch (error) {
       console.error("Error fetching data:", error);
       message.error("Error al cargar los datos");
     }
   };
+  
+  
+  
 
   const addCaseRent = async (values: TableData) => {
     try {
@@ -122,12 +133,18 @@ export const CaseRentsForm: React.FC = () => {
   const openEditModal = (record: TableData) => {
     setEditingCase(record);
     setIsModalVisible(true);
+  
+    // Busca el nombre del protocolista a partir del ID
     form.setFieldsValue({
       ...record,
       creation_date: dayjs(record.creation_date),
       document_date: dayjs(record.document_date),
+      protocolista: record.protocolista, // Usa directamente el ID del protocolista
     });
   };
+  
+  
+  
 
   interface AxiosError {
     response?: {
@@ -191,7 +208,28 @@ export const CaseRentsForm: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+    const fetchProtocolists = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/protocolist-rents");
+        const formattedOptions = response.data.map((protocolist: Protocolist) => ({
+          value: protocolist.id,
+          label: `${protocolist.complete_name} ${protocolist.last_name}`,
+        }));
+        const protocolistMap = response.data.reduce((map: Record<number, string>, protocolist: Protocolist) => {
+          map[protocolist.id] = `${protocolist.complete_name} ${protocolist.last_name}`;
+          return map;
+        }, {});
+        setProtocolistOptions(formattedOptions);
+        setProtocolistMap(protocolistMap);
+      } catch (error) {
+        console.error("Error fetching protocolists:", error);
+        message.error("Error al cargar los protocolistas");
+      }
+    };
+  
+    fetchProtocolists();
   }, []);
+  
 
   const tableColumns = [
     {
@@ -231,7 +269,10 @@ export const CaseRentsForm: React.FC = () => {
       dataIndex: "protocolista",
       key: "protocolista",
       visible: visibleColumns.includes("protocolista"),
+      render: (protocolistaId: number) => protocolistMap[protocolistaId] || "Desconocido",
     },
+    
+    
     {
       title: "Observaciones",
       dataIndex: "observaciones",
@@ -360,16 +401,13 @@ export const CaseRentsForm: React.FC = () => {
 
                 <Row gutter={16}>
                   <Col span={12}>
-                    <Form.Item
-                      label="Protocolista"
-                      name="protocolista"
-                      rules={[{ required: true, message: "Seleccione un protocolista" }]}
-                    >
-                      <Select placeholder="Seleccione un protocolista">
-                        <Option value="Protocolista 1">Protocolista 1</Option>
-                        <Option value="Protocolista 2">Protocolista 2</Option>
-                      </Select>
-                    </Form.Item>
+                  <Form.Item
+                    label="Protocolista"
+                    name="protocolista"
+                    rules={[{ required: true, message: "Seleccione un protocolista" }]}
+                  >
+                    <Select placeholder="Seleccione un protocolista" options={protocolistOptions} />
+                  </Form.Item>
                   </Col>
                   <Col span={12}>
                     <Form.Item label="Observaciones" name="observaciones">
@@ -454,15 +492,14 @@ export const CaseRentsForm: React.FC = () => {
             >
               <Row gutter={16}>
                 <Col span={12}>
-                <Form.Item
-                  label="Fecha"
-                  name="creation_date"
-                  initialValue={dayjs()} // Valor inicial establecido con la fecha actual
-                  rules={[{ required: true, message: "Seleccione una fecha" }]}
-                >
-                  <DatePicker style={{ width: "100%" }} disabled /> {/* Campo deshabilitado */}
-                </Form.Item>
-
+                  <Form.Item
+                    label="Fecha"
+                    name="creation_date"
+                    initialValue={dayjs()}
+                    rules={[{ required: true, message: "Seleccione una fecha" }]}
+                  >
+                    <DatePicker style={{ width: "100%" }} disabled />
+                  </Form.Item>
                 </Col>
                 <Col span={12}>
                   <Form.Item
@@ -476,28 +513,19 @@ export const CaseRentsForm: React.FC = () => {
               </Row>
               <Row gutter={16}>
                 <Col span={12}>
-                <Form.Item
-                  label="Escritura"
-                  name="escritura"
-                  rules={[
-                    { required: true, message: "Ingrese el número de escritura" },
-                    {
-                      pattern: /^[0-9]{1,5}$/,
-                      message: "La escritura debe ser un número de hasta 5 dígitos sin caracteres especiales o letras.",
-                    },
-                  ]}
-                >
-                  <Input
-                    placeholder="Ej: 12345"
-                    maxLength={5}
-                    onChange={(e) => {
-                      const value = e.target.value.trim();
-                      const sanitizedValue = value.replace(/[^0-9]/g, "");
-                      e.target.value = sanitizedValue;
-                    }}
-                  />
-                </Form.Item>
-
+                  <Form.Item
+                    label="Escritura"
+                    name="escritura"
+                    rules={[
+                      { required: true, message: "Ingrese el número de escritura" },
+                      {
+                        pattern: /^[0-9]{1,5}$/,
+                        message: "La escritura debe ser un número de hasta 5 dígitos.",
+                      },
+                    ]}
+                  >
+                    <Input maxLength={5} />
+                  </Form.Item>
                 </Col>
                 <Col span={12}>
                   <Form.Item
@@ -505,25 +533,29 @@ export const CaseRentsForm: React.FC = () => {
                     name="radicado"
                     rules={[{ required: true, message: "Ingrese el radicado" }]}
                   >
-                    <Input placeholder="Ej: 20240101234432" />
+                    <Input />
                   </Form.Item>
                 </Col>
               </Row>
               <Row gutter={16}>
                 <Col span={12}>
-                  <Form.Item
-                    label="Protocolista"
-                    name="protocolista"
-                    rules={[{ required: true, message: "Seleccione un protocolista" }]}
-                  >
-                    <Select placeholder="Seleccione un protocolista">
-                      <Option value="Protocolista 1">Protocolista 1</Option>
-                      <Option value="Protocolista 2">Protocolista 2</Option>
-                    </Select>
-                  </Form.Item>
+                <Form.Item
+                  label="Protocolista"
+                  name="protocolista"
+                  rules={[{ required: true, message: "Seleccione un protocolista" }]}
+                >
+                  <Select
+                    placeholder="Seleccione un protocolista"
+                    options={protocolistOptions} // Usa las opciones cargadas con nombres
+                  />
+                </Form.Item>
+
                 </Col>
                 <Col span={12}>
-                  <Form.Item label="Observaciones" name="observaciones">
+                  <Form.Item
+                    label="Observaciones"
+                    name="observaciones"
+                  >
                     <Input.TextArea placeholder="Observaciones adicionales (opcional)" />
                   </Form.Item>
                 </Col>
