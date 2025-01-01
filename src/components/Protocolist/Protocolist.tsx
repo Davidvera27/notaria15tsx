@@ -250,10 +250,26 @@ export const Protocolist: React.FC = () => {
               <Form.Item
                 label="Correo Electrónico"
                 name="email"
-                rules={[{ required: true, message: "Ingrese el correo electrónico" }]}
+                rules={[
+                  { required: true, type: "email", message: "Ingrese un correo electrónico válido" },
+                  () => ({
+                    validator(_, value) {
+                      if (
+                        tableData.some(
+                          (item) =>
+                            item.email === value && item.id !== editingProtocolist?.id // Compara con los demás elementos excepto el actual
+                        )
+                      ) {
+                        return Promise.reject("El correo electrónico ya está en uso por otro protocolista.");
+                      }
+                      return Promise.resolve();
+                    },
+                  }),
+                ]}
               >
                 <Input />
               </Form.Item>
+
               <Form.Item label="Observaciones" name="observations">
                 <Input.TextArea />
               </Form.Item>
