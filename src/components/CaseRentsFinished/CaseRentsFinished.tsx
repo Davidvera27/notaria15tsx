@@ -113,10 +113,13 @@ export const CaseRentsFinished: React.FC = () => {
           <Sidebar />
         </Sider>
         <Content style={{ padding: "16px" }}>
-          <Breadcrumb style={{ marginBottom: "16px" }}>
-            <Breadcrumb.Item>Inicio</Breadcrumb.Item>
-            <Breadcrumb.Item>Boletas de Rentas Enviadas</Breadcrumb.Item>
-          </Breadcrumb>
+        <Breadcrumb
+  items={[
+    { title: 'Inicio' },
+    { title: 'Radicados de Rentas' },
+  ]}
+/>
+
 
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {/* Primera Tarjeta */}
