@@ -57,8 +57,10 @@ export const CaseRentsForm: React.FC = () => {
   const [data, setData] = useState<TableData[]>([]);
   const [protocolistOptions, setProtocolistOptions] = useState([]);
   const [editingCase, setEditingCase] = useState<TableData | null>(null);
-  const [protocolistMap, setProtocolistMap] = useState<Record<number, string>>({});
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(["id", "creation_date", "escritura", "document_date", "radicado", "protocolista", "observaciones"]);
+  const [protocolistMap, setProtocolistMap] = useState<
+   Record<number, { fullName: string; email: string }>
+>({});
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(["id", "creation_date", "escritura", "document_date", "radicado", "protocolista_fullName","protocolista_email", "observaciones"]);
   const [form] = Form.useForm();
 
   const handleFormLayoutChange = (e: RadioChangeEvent) => {
@@ -150,27 +152,33 @@ export const CaseRentsForm: React.FC = () => {
   
   const sendEmail = async (record: TableData) => {
     const protocolistaId = Number(record.protocolista); // Convertir a número
-    const protocolistaEmail = protocolistMap[protocolistaId]; // Obtener correo asociado
+    const protocolista = protocolistMap[protocolistaId]; // Obtener datos del protocolista
   
-    if (!protocolistaEmail) {
+    if (!protocolista || !protocolista.email) {
       return message.error("El correo del protocolista no fue encontrado. Verifique los datos.");
     }
   
     try {
-      await axios.post("http://localhost:5000/api/send-email", {
-        to: protocolistaEmail,
+      const response = await axios.post("http://localhost:5000/api/send-email", {
+        to: protocolista.email,
         subject: "Notificación de Caso",
-        text: `Estimado(a), se le informa sobre un nuevo caso asignado:
+        text: `Estimado(a) ${protocolista.fullName}, se le informa sobre un nuevo caso asignado:
                - Número de escritura: ${record.escritura}
                - Número de radicado: ${record.radicado}
                - Fecha del documento: ${record.document_date}`,
       });
-      message.success(`Correo enviado exitosamente a ${protocolistaEmail}`);
+  
+      if (response.status === 200) {
+        message.success(`Correo enviado exitosamente a ${protocolista.email}`);
+      } else {
+        message.error("No se pudo enviar el correo. Por favor, intente nuevamente.");
+      }
     } catch (error) {
       console.error("Error al enviar el correo:", error);
-      message.error("No se pudo enviar el correo. Por favor, intente nuevamente.");
+      message.error("Error al intentar enviar el correo. Verifique los datos y reintente.");
     }
   };
+  
   
 
   
@@ -211,12 +219,20 @@ export const CaseRentsForm: React.FC = () => {
       visible: visibleColumns.includes("radicado"),
     },
     {
-      title: "Protocolista",
-      dataIndex: "protocolista",
-      key: "protocolista",
-      visible: visibleColumns.includes("protocolista"),
-      render: (protocolistaId: number) => protocolistMap[protocolistaId] || "Desconocido",
+      title: "Nombre del Protocolista",
+      key: "protocolista_fullName",
+      visible: visibleColumns.includes("protocolista_fullName"),
+      render: (_: unknown, record: TableData) =>
+        protocolistMap[Number(record.protocolista)]?.fullName || "Desconocido",
     },
+    {
+      title: "Correo del Protocolista",
+      key: "protocolista_email",
+      visible: visibleColumns.includes("protocolista_email"),
+      render: (_: unknown, record: TableData) =>
+        protocolistMap[Number(record.protocolista)]?.email || "Desconocido",
+    },
+       
     {
       title: "Observaciones",
       dataIndex: "observaciones",
@@ -236,21 +252,21 @@ export const CaseRentsForm: React.FC = () => {
       width: 100,
       visible: true,
       render: (_: unknown, record: TableData) => (
-          <Dropdown
-            menu={{
-              items: [
-                { label: 'Editar', key: 'edit', onClick: () => openEditModal(record) },
-                { label: 'Eliminar', key: 'delete', onClick: () => deleteCaseRent(record.id) },
-                { label: 'Enviar correo', key: 'send-email', onClick: () => sendEmail(record) },
-              ],
-            }}
-          >
-            <Button type="text" icon={<EllipsisOutlined />} />
-          </Dropdown>
-
+        <Dropdown
+          menu={{
+            items: [
+              { label: "Editar", key: "edit", onClick: () => openEditModal(record) },
+              { label: "Eliminar", key: "delete", onClick: () => deleteCaseRent(record.id) },
+              { label: "Enviar correo", key: "send-email", onClick: () => sendEmail(record) },
+            ],
+          }}
+        >
+          <Button type="text" icon={<EllipsisOutlined />} />
+        </Dropdown>
       ),
     },
   ].filter((col) => col.visible);
+  
 
   useEffect(() => {
     fetchData();
@@ -261,8 +277,11 @@ export const CaseRentsForm: React.FC = () => {
           value: protocolist.id,
           label: `${protocolist.complete_name} ${protocolist.last_name}`,
         }));
-        const protocolistMap = response.data.reduce((map: Record<number, string>, protocolist: Protocolist) => {
-          map[protocolist.id] = `${protocolist.complete_name} ${protocolist.last_name}`; // Asocia el ID con el nombre completo
+        const protocolistMap = response.data.reduce((map: Record<number, { fullName: string; email: string }>, protocolist: Protocolist) => {
+          map[protocolist.id] = {
+            fullName: `${protocolist.complete_name} ${protocolist.last_name}`,
+            email: protocolist.email,
+          };
           return map;
         }, {});        
         setProtocolistOptions(formattedOptions);
@@ -272,6 +291,8 @@ export const CaseRentsForm: React.FC = () => {
         message.error("Error al cargar los protocolistas");
       }
     };
+    
+
     fetchProtocolists();
   }, []);
 
@@ -448,7 +469,16 @@ export const CaseRentsForm: React.FC = () => {
             footer={null}
           >
             <Checkbox.Group
-              options={["id", "creation_date", "escritura", "document_date", "radicado", "protocolista", "observaciones"]}
+              options={[
+                "id",
+                "creation_date",
+                "escritura",
+                "document_date",
+                "radicado",
+                "protocolista_fullName",
+                "protocolista_email",
+                "observaciones",
+              ]}
               value={visibleColumns}
               onChange={(selectedColumns) => setVisibleColumns(selectedColumns as string[])}
             />
