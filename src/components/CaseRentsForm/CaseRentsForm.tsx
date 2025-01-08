@@ -147,9 +147,27 @@ export const CaseRentsForm: React.FC = () => {
     });
   };
 
-  const sendEmail = (record: TableData) => {
-    message.info(`Correo enviado al protocolista asociado al caso con ID: ${record.id}`);
+  const sendEmail = async (record: TableData) => {
+    const protocolistaEmail = record.protocolista; // Obtén el email del protocolista
+  
+    if (!protocolistaEmail) {
+      return message.error("No se encontró el correo del protocolista");
+    }
+  
+    try {
+      await axios.post("http://localhost:5000/api/send-email", {
+        to: protocolistaEmail,
+        subject: "Notificación de Caso",
+        text: `Estimado(a), se le informa sobre un nuevo caso asignado con el ID: ${record.id}.`,
+      });
+  
+      message.success(`Correo enviado a ${protocolistaEmail}`);
+    } catch (error) {
+      console.error("Error al enviar el correo:", error);
+      message.error("No se pudo enviar el correo");
+    }
   };
+  
 
   const tableColumns = [
     {
