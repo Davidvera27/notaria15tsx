@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   Form,
+  Spin,
   Input,
   Layout,
   Select,
@@ -23,7 +24,7 @@ import {
   Tooltip,
   Dropdown,
 } from "antd";
-import { EllipsisOutlined } from "@ant-design/icons";
+import { EllipsisOutlined, LoadingOutlined } from "@ant-design/icons";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { Header } from "../Header/Header";
 import dayjs from "dayjs";
@@ -60,6 +61,7 @@ export const CaseRentsForm: React.FC = () => {
   const [protocolistMap, setProtocolistMap] = useState<
    Record<number, { fullName: string; email: string }>
 >({});
+  const [isSending, setIsSending] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(["id", "creation_date", "escritura", "document_date", "radicado", "protocolista_fullName","protocolista_email", "observaciones"]);
   const [form] = Form.useForm();
 
@@ -158,6 +160,8 @@ export const CaseRentsForm: React.FC = () => {
       return message.error("El correo del protocolista no fue encontrado. Verifique los datos.");
     }
   
+    setIsSending(true); // Activar el spinner antes de enviar el correo
+  
     try {
       const response = await axios.post("http://localhost:5000/api/send-email", {
         to: protocolista.email,
@@ -176,12 +180,10 @@ export const CaseRentsForm: React.FC = () => {
     } catch (error) {
       console.error("Error al enviar el correo:", error);
       message.error("Error al intentar enviar el correo. Verifique los datos y reintente.");
+    } finally {
+      setIsSending(false); // Desactivar el spinner después de completar la solicitud
     }
-  };
-  
-  
-
-  
+  };  
 
   
 
@@ -257,14 +259,26 @@ export const CaseRentsForm: React.FC = () => {
             items: [
               { label: "Editar", key: "edit", onClick: () => openEditModal(record) },
               { label: "Eliminar", key: "delete", onClick: () => deleteCaseRent(record.id) },
-              { label: "Enviar correo", key: "send-email", onClick: () => sendEmail(record) },
+              {
+                label: (
+                  <>
+                    {isSending ? (
+                      <LoadingOutlined style={{ marginRight: 8 }} />
+                    ) : null}
+                    Enviar correo
+                  </>
+                ),
+                key: "send-email",
+                onClick: () => sendEmail(record),
+                disabled: isSending, // Desactivar el botón si el spinner está activo
+              },
             ],
           }}
         >
           <Button type="text" icon={<EllipsisOutlined />} />
         </Dropdown>
       ),
-    },
+    },      
   ].filter((col) => col.visible);
   
 
@@ -315,9 +329,22 @@ export const CaseRentsForm: React.FC = () => {
       message.error("Error al actualizar el caso");
     }
   };  
-  
+  const loadingIcon = <LoadingOutlined style={{ fontSize: 24 }} spin />;
+
 
   return (
+<Spin
+  spinning={isSending}
+  tip="Enviando correo..."
+  indicator={loadingIcon}
+  style={{
+    position: "fixed",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    zIndex: 1000, // Asegura que el spinner esté por encima de otros elementos
+  }}
+>
     <Layout>
       <Header />
       <Layout>
@@ -586,6 +613,7 @@ export const CaseRentsForm: React.FC = () => {
           </Content>
         </Layout>
       </Layout>
+      </Spin>
     );
   };
   
