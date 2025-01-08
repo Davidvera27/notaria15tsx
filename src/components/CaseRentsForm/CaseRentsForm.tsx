@@ -75,6 +75,12 @@ export const CaseRentsForm: React.FC = () => {
     setIsColumnConfigVisible(false);
   };
 
+
+  const resetForm = () => {
+    form.resetFields(); // Resetea los demás campos del formulario
+    form.setFieldsValue({ creation_date: dayjs() }); // Establece la fecha actual en "creation_date"
+  };
+  
   const handleModalCancel = () => {
     setIsModalVisible(false);
     setEditingCase(null);
@@ -98,18 +104,18 @@ export const CaseRentsForm: React.FC = () => {
   const addCaseRent = async (values: TableData) => {
     try {
       const currentDate = dayjs().format("YYYY-MM-DD");
-
+  
       if (values.creation_date > currentDate) {
         return message.error("La fecha de creación no es válida.");
       }
       if (values.document_date > currentDate) {
         return message.error("La fecha del documento no es válida.");
       }
-
+  
       await axios.post("http://localhost:5000/api/case-rents", values);
       fetchData();
       message.success("Caso agregado correctamente");
-      form.resetFields(); // Formatear el formulario
+      resetForm(); // Llama a la función para resetear el formulario manteniendo la fecha actual
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.data?.error) {
         message.error(error.response.data.error);
@@ -118,6 +124,8 @@ export const CaseRentsForm: React.FC = () => {
       }
     }
   };
+  
+  
 
   const deleteCaseRent = async (id: number) => {
     try {
@@ -346,25 +354,24 @@ export const CaseRentsForm: React.FC = () => {
           </Breadcrumb>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <Card title={<Title level={5}>Crear Caso</Title>}>
-              <Form
-                layout="vertical"
-                size={componentSize}
-                onFinish={onFinish}
-                form={form} // Vincular el formulario
-                initialValues={{
-                  creation_date: dayjs(), // Establecer la fecha actual como valor inicial
-                }}
-              >
+            <Form
+              layout="vertical"
+              size={componentSize}
+              onFinish={onFinish}
+              form={form}
+              initialValues={{
+                creation_date: dayjs(), // Fecha actual al iniciar el formulario
+              }}>
                 <Row gutter={16}>
                   <Col span={12}>
                   <Form.Item
                     label="Fecha"
                     name="creation_date"
-                    initialValue={dayjs()} // Valor inicial establecido con la fecha actual
-                    rules={[{ required: true, message: "Seleccione una fecha" }]}
-                  >
-                    <DatePicker style={{ width: "100%" }} disabled /> {/* Campo deshabilitado */}
+                    initialValue={dayjs()} // Fecha actual inicial
+                    rules={[{ required: true, message: "Seleccione una fecha" }]}>
+                    <DatePicker style={{ width: "100%" }} disabled /> {/* Campo inactivo */}
                   </Form.Item>
+
 
                   </Col>
                   <Col span={12}>
