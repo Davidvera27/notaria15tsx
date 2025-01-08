@@ -14,55 +14,118 @@ interface CaseRent {
   observaciones?: string;
 }
 
+type RadicadoValidationResult = {
+  id: number;
+  protocolista_name: string;
+  protocolista_last_name: string;
+};
+
 // CREATE
-router.post('/case-rents', (req: Request, res: Response) => {
-  const { creation_date, document_date, escritura, radicado, protocolista, observaciones }: CaseRent = req.body;
+router.post("/case-rents", (req: Request, res: Response) => {
+  const {
+    creation_date,
+    document_date,
+    escritura,
+    radicado,
+    protocolista,
+    observaciones,
+  }: CaseRent = req.body;
   const last_modified = new Date().toISOString();
-  const currentDate = new Date().toISOString().split('T')[0];
+  const currentDate = new Date().toISOString().split("T")[0];
 
   if (!/^[0-9]{1,5}$/.test(escritura)) {
-    return res.status(400).json({ error: 'La escritura debe ser un número de hasta 5 dígitos sin caracteres especiales o letras.' });
+    return res.status(400).json({
+      error:
+        "La escritura debe ser un número de hasta 5 dígitos sin caracteres especiales o letras.",
+    });
   }
 
   if (creation_date > currentDate || document_date > currentDate) {
-    return res.status(400).json({ error: 'Las fechas no son válidas.' });
+    return res
+      .status(400)
+      .json({ error: "Las fechas no son válidas." });
   }
 
-  const radicadoQuery = 'SELECT id, protocolista FROM case_rents WHERE radicado = ?';
-  db.get<Pick<CaseRent, 'id' | 'protocolista'>>(radicadoQuery, [radicado], (err, row) => {
-    if (err) {
-      return res.status(500).json({ error: 'Error al verificar el radicado.' });
-    }
-    if (row) {
-      return res.status(400).json({
-        error: `El radicado ya existe en la fila ${row.id} y pertenece al protocolista ${row.protocolista}.`,
-      });
-    }
+  const radicadoQuery = `
+    SELECT cr.id, pr.complete_name AS protocolista_name, pr.last_name AS protocolista_last_name
+    FROM case_rents cr
+    JOIN protocolist_rents pr ON cr.protocolista = pr.id
+    WHERE cr.radicado = ?`;
 
-    const escrituraQuery = 'SELECT id, protocolista FROM case_rents WHERE escritura = ? AND document_date = ?';
-    db.get<Pick<CaseRent, 'id' | 'protocolista'>>(escrituraQuery, [escritura, document_date], (err, row) => {
+  db.get<RadicadoValidationResult>(
+    radicadoQuery,
+    [radicado],
+    (err, row) => {
       if (err) {
-        return res.status(500).json({ error: 'Error al verificar la escritura y la fecha del documento.' });
+        return res
+          .status(500)
+          .json({ error: "Error al verificar el radicado." });
       }
       if (row) {
         return res.status(400).json({
-          error: `La escritura ya existe en la fila ${row.id} y pertenece al protocolista ${row.protocolista}.`,
+          error: `El radicado ya existe en la fila ${row.id} y pertenece al protocolista ${row.protocolista_name} ${row.protocolista_last_name}.`,
         });
       }
 
-      const insertQuery = `
-        INSERT INTO case_rents (creation_date, document_date, escritura, radicado, protocolista, observaciones, last_modified)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `;
-      db.run(insertQuery, [creation_date, document_date, escritura, radicado, protocolista, observaciones, last_modified], function (err) {
-        if (err) {
-          return res.status(500).json({ error: err.message });
+      const escrituraQuery = `
+        SELECT cr.id, pr.complete_name AS protocolista_name, pr.last_name AS protocolista_last_name
+        FROM case_rents cr
+        JOIN protocolist_rents pr ON cr.protocolista = pr.id
+        WHERE cr.escritura = ? AND cr.document_date = ?`;
+
+      db.get<RadicadoValidationResult>(
+        escrituraQuery,
+        [escritura, document_date],
+        (err, row) => {
+          if (err) {
+            return res.status(500).json({
+              error:
+                "Error al verificar la escritura y la fecha del documento.",
+            });
+          }
+          if (row) {
+            return res.status(400).json({
+              error: `La escritura ya existe en la fila ${row.id} y pertenece al protocolista ${row.protocolista_name} ${row.protocolista_last_name}.`,
+            });
+          }
+
+          const insertQuery = `
+            INSERT INTO case_rents (
+              creation_date,
+              document_date,
+              escritura,
+              radicado,
+              protocolista,
+              observaciones,
+              last_modified
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)`;
+
+          db.run(
+            insertQuery,
+            [
+              creation_date,
+              document_date,
+              escritura,
+              radicado,
+              protocolista,
+              observaciones,
+              last_modified,
+            ],
+            function (err) {
+              if (err) {
+                return res.status(500).json({ error: err.message });
+              }
+              res.status(201).json({ id: this.lastID });
+            }
+          );
         }
-        res.status(201).json({ id: this.lastID });
-      });
-    });
-  });
+      );
+    }
+  );
 });
+
+
 
 // READ
 router.get('/case-rents', (_req: Request, res: Response) => {
