@@ -262,9 +262,9 @@ export const CaseRentsForm: React.FC = () => {
           label: `${protocolist.complete_name} ${protocolist.last_name}`,
         }));
         const protocolistMap = response.data.reduce((map: Record<number, string>, protocolist: Protocolist) => {
-          map[protocolist.id] = protocolist.email; // Asocia el ID con el correo electrónico
+          map[protocolist.id] = `${protocolist.complete_name} ${protocolist.last_name}`; // Asocia el ID con el nombre completo
           return map;
-        }, {});
+        }, {});        
         setProtocolistOptions(formattedOptions);
         setProtocolistMap(protocolistMap);
       } catch (error) {
