@@ -22,7 +22,6 @@ import {
   RadioChangeEvent,
   Tooltip,
   Dropdown,
-  Menu,
 } from "antd";
 import { EllipsisOutlined } from "@ant-design/icons";
 import { Sidebar } from "../Sidebar/Sidebar";
@@ -46,6 +45,7 @@ type Protocolist = {
   id: number;
   complete_name: string;
   last_name: string;
+  email: string;
 };
 
 export const CaseRentsForm: React.FC = () => {
@@ -147,26 +147,34 @@ export const CaseRentsForm: React.FC = () => {
     });
   };
 
+  
   const sendEmail = async (record: TableData) => {
-    const protocolistaEmail = record.protocolista; // Obtén el email del protocolista
+    const protocolistaId = Number(record.protocolista); // Convertir a número
+    const protocolistaEmail = protocolistMap[protocolistaId]; // Obtener correo asociado
   
     if (!protocolistaEmail) {
-      return message.error("No se encontró el correo del protocolista");
+      return message.error("El correo del protocolista no fue encontrado. Verifique los datos.");
     }
   
     try {
       await axios.post("http://localhost:5000/api/send-email", {
         to: protocolistaEmail,
         subject: "Notificación de Caso",
-        text: `Estimado(a), se le informa sobre un nuevo caso asignado con el ID: ${record.id}.`,
+        text: `Estimado(a), se le informa sobre un nuevo caso asignado:
+               - Número de escritura: ${record.escritura}
+               - Número de radicado: ${record.radicado}
+               - Fecha del documento: ${record.document_date}`,
       });
-  
-      message.success(`Correo enviado a ${protocolistaEmail}`);
+      message.success(`Correo enviado exitosamente a ${protocolistaEmail}`);
     } catch (error) {
       console.error("Error al enviar el correo:", error);
-      message.error("No se pudo enviar el correo");
+      message.error("No se pudo enviar el correo. Por favor, intente nuevamente.");
     }
   };
+  
+
+  
+
   
 
   const tableColumns = [
@@ -228,24 +236,18 @@ export const CaseRentsForm: React.FC = () => {
       width: 100,
       visible: true,
       render: (_: unknown, record: TableData) => (
-        <Dropdown
-          overlay={
-            <Menu>
-              <Menu.Item key="edit" onClick={() => openEditModal(record)}>
-                Editar
-              </Menu.Item>
-              <Menu.Item key="delete" onClick={() => deleteCaseRent(record.id)}>
-                Eliminar
-              </Menu.Item>
-              <Menu.Item key="send-email" onClick={() => sendEmail(record)}>
-                Enviar correo
-              </Menu.Item>
-            </Menu>
-          }
-          trigger={["click"]}
-        >
-          <Button type="text" icon={<EllipsisOutlined />} />
-        </Dropdown>
+          <Dropdown
+            menu={{
+              items: [
+                { label: 'Editar', key: 'edit', onClick: () => openEditModal(record) },
+                { label: 'Eliminar', key: 'delete', onClick: () => deleteCaseRent(record.id) },
+                { label: 'Enviar correo', key: 'send-email', onClick: () => sendEmail(record) },
+              ],
+            }}
+          >
+            <Button type="text" icon={<EllipsisOutlined />} />
+          </Dropdown>
+
       ),
     },
   ].filter((col) => col.visible);
@@ -260,7 +262,7 @@ export const CaseRentsForm: React.FC = () => {
           label: `${protocolist.complete_name} ${protocolist.last_name}`,
         }));
         const protocolistMap = response.data.reduce((map: Record<number, string>, protocolist: Protocolist) => {
-          map[protocolist.id] = `${protocolist.complete_name} ${protocolist.last_name}`;
+          map[protocolist.id] = protocolist.email; // Asocia el ID con el correo electrónico
           return map;
         }, {});
         setProtocolistOptions(formattedOptions);
@@ -270,7 +272,6 @@ export const CaseRentsForm: React.FC = () => {
         message.error("Error al cargar los protocolistas");
       }
     };
-
     fetchProtocolists();
   }, []);
 
@@ -303,10 +304,13 @@ export const CaseRentsForm: React.FC = () => {
           <Sidebar />
         </Sider>
         <Content style={{ padding: "16px" }}>
-          <Breadcrumb style={{ marginBottom: "16px" }}>
-            <Breadcrumb.Item>Inicio</Breadcrumb.Item>
-            <Breadcrumb.Item>Radicados de Rentas</Breadcrumb.Item>
-          </Breadcrumb>
+          <Breadcrumb
+              items={[
+                { title: 'Inicio' },
+                { title: 'Radicados de Rentas' },
+              ]}
+            />
+
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <Card title={<Title level={5}>Crear Caso</Title>}>
               <Form
@@ -326,10 +330,7 @@ export const CaseRentsForm: React.FC = () => {
                   addCaseRent(formattedValues as TableData);
                 }}
                 form={form}
-                initialValues={{
-                  creation_date: dayjs(),
-                }}
-              >
+                initialValues={{ creation_date: dayjs() }}>
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item
