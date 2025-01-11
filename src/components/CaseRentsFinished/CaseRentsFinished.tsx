@@ -11,6 +11,7 @@ import {
   Tag,
   MenuProps,
   InputNumber,
+  RadioChangeEvent,
 } from "antd";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { Header } from "../Header/Header";
@@ -40,7 +41,7 @@ export const CaseRentsFinished: React.FC = () => {
   const [componentSize, setComponentSize] = useState<"small" | "middle" | "large">("middle");
   const [pageSize, setPageSize] = useState(10);
 
-  const handleFormLayoutChange = (e: any) => {
+  const handleFormLayoutChange = (e: RadioChangeEvent) => {
     setComponentSize(e.target.value);
   };
 
