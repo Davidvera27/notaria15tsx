@@ -1,17 +1,18 @@
-import { Router, Request, Response } from 'express';
-import db from '../database/db';
+import { Router, Request, Response } from "express";
+import db from "../database/db";
 
 const router = Router();
 
 // Tipos
 interface CaseRent {
-  id?: number; // Hacer opcional para adaptarlo a las respuestas de las consultas
+  id?: number; // Opcional para adaptarse a las consultas
   creation_date: string;
   document_date: string;
   escritura: string;
   radicado: string;
   protocolista: string;
   observaciones?: string;
+  last_modified?: string;
 }
 
 type RadicadoValidationResult = {
@@ -125,8 +126,6 @@ router.post("/case-rents", (req: Request, res: Response) => {
   );
 });
 
-
-
 // READ
 router.get('/case-rents', (_req: Request, res: Response) => {
   const query = 'SELECT * FROM case_rents';
@@ -218,7 +217,6 @@ router.put('/case-rents/:id', (req: Request, res: Response) => {
   });
 });
 
-
 // DELETE
 router.delete('/case-rents/:id', (req: Request, res: Response) => {
   const { id } = req.params;
@@ -228,6 +226,53 @@ router.delete('/case-rents/:id', (req: Request, res: Response) => {
       return res.status(500).json({ error: err.message });
     }
     res.json({ deletedRows: this.changes });
+  });
+});
+
+// MOVE TO FINISHED
+router.post("/move-to-finished/:id", (req, res) => {
+  const { id } = req.params;
+
+  const getCaseQuery = "SELECT * FROM case_rents WHERE id = ?";
+  db.get<CaseRent>(getCaseQuery, [id], (err, caseData) => {
+    if (err) {
+      return res.status(500).json({ error: "Error al buscar el caso." });
+    }
+
+    if (!caseData) {
+      return res.status(404).json({ error: "Caso no encontrado." });
+    }
+
+    const insertFinishedQuery = `
+      INSERT INTO case_rents_finished (id, creation_date, document_date, escritura, radicado, protocolista, observaciones, last_modified)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    db.run(
+      insertFinishedQuery,
+      [
+        caseData.id,
+        caseData.creation_date,
+        caseData.document_date,
+        caseData.escritura,
+        caseData.radicado,
+        caseData.protocolista,
+        caseData.observaciones || null,
+        caseData.last_modified || null,
+      ],
+      function (err) {
+        if (err) {
+          return res.status(500).json({ error: "Error al trasladar el caso." });
+        }
+
+        db.run("DELETE FROM case_rents WHERE id = ?", [id], function (err) {
+          if (err) {
+            return res.status(500).json({ error: "Error al eliminar el caso original." });
+          }
+
+          res.json({ message: "Caso trasladado exitosamente a terminados." });
+        });
+      }
+    );
   });
 });
 
