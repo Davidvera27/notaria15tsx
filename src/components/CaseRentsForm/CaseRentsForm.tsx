@@ -153,17 +153,18 @@ export const CaseRentsForm: React.FC = () => {
 
   
   const sendEmail = async (record: TableData) => {
-    const protocolistaId = Number(record.protocolista); // Convertir a número
-    const protocolista = protocolistMap[protocolistaId]; // Obtener datos del protocolista
+    const protocolistaId = Number(record.protocolista);
+    const protocolista = protocolistMap[protocolistaId];
   
     if (!protocolista || !protocolista.email) {
       return message.error("El correo del protocolista no fue encontrado. Verifique los datos.");
     }
   
-    setIsSending(true); // Activar el spinner antes de enviar el correo
+    setIsSending(true);
   
     try {
-      const response = await axios.post("http://localhost:5000/api/send-email", {
+      // Enviar el correo
+      const emailResponse = await axios.post("http://localhost:5000/api/send-email", {
         to: protocolista.email,
         subject: "Notificación de Caso",
         text: `Estimado(a) ${protocolista.fullName}, se le informa sobre un nuevo caso asignado:
@@ -172,18 +173,24 @@ export const CaseRentsForm: React.FC = () => {
                - Fecha del documento: ${record.document_date}`,
       });
   
-      if (response.status === 200) {
-        message.success(`Correo enviado exitosamente a ${protocolista.email}`);
+      if (emailResponse.status === 200) {
+        // Trasladar el caso al backend
+        const moveResponse = await axios.post(`http://localhost:5000/api/case-rents/move-to-finished/${record.id}`);
+        if (moveResponse.status === 200) {
+          message.success(`Caso trasladado exitosamente. Correo enviado a ${protocolista.email}`);
+          fetchData(); // Refrescar tabla de casos
+        }
       } else {
         message.error("No se pudo enviar el correo. Por favor, intente nuevamente.");
       }
     } catch (error) {
-      console.error("Error al enviar el correo:", error);
-      message.error("Error al intentar enviar el correo. Verifique los datos y reintente.");
+      console.error("Error al enviar el correo o trasladar el caso:", error);
+      message.error("Error al intentar enviar el correo o trasladar el caso.");
     } finally {
-      setIsSending(false); // Desactivar el spinner después de completar la solicitud
+      setIsSending(false);
     }
-  };  
+  };
+    
 
   
 
