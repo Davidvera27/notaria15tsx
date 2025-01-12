@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   Form,
+  Spin,
   Input,
   Layout,
   Select,
@@ -12,7 +13,6 @@ import {
   Typography,
   DatePicker,
   Radio,
-  Space,
   Row,
   Col,
   Modal,
@@ -22,7 +22,9 @@ import {
   message,
   RadioChangeEvent,
   Tooltip,
+  Dropdown,
 } from "antd";
+import { EllipsisOutlined, LoadingOutlined } from "@ant-design/icons";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { Header } from "../Header/Header";
 import dayjs from "dayjs";
@@ -44,6 +46,7 @@ type Protocolist = {
   id: number;
   complete_name: string;
   last_name: string;
+  email: string;
 };
 
 export const CaseRentsForm: React.FC = () => {
@@ -55,8 +58,9 @@ export const CaseRentsForm: React.FC = () => {
   const [data, setData] = useState<TableData[]>([]);
   const [protocolistOptions, setProtocolistOptions] = useState([]);
   const [editingCase, setEditingCase] = useState<TableData | null>(null);
-  const [protocolistMap, setProtocolistMap] = useState<Record<number, string>>({});
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(["id", "creation_date", "escritura", "document_date", "radicado", "protocolista", "observaciones"]);
+  const [protocolistMap, setProtocolistMap] = useState<Record<number, { fullName: string; email: string }>>({});
+  const [isSending, setIsSending] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(["id", "creation_date", "escritura", "document_date", "radicado", "protocolista_fullName", "protocolista_email", "observaciones"]);
   const [form] = Form.useForm();
 
   const handleFormLayoutChange = (e: RadioChangeEvent) => {
@@ -75,6 +79,11 @@ export const CaseRentsForm: React.FC = () => {
     setIsColumnConfigVisible(false);
   };
 
+  const resetForm = () => {
+    form.resetFields();
+    form.setFieldsValue({ creation_date: dayjs() });
+  };
+
   const handleModalCancel = () => {
     setIsModalVisible(false);
     setEditingCase(null);
@@ -84,16 +93,13 @@ export const CaseRentsForm: React.FC = () => {
   const fetchData = async () => {
     try {
       const response = await axios.get("http://localhost:5000/api/case-rents");
-      console.log("Data fetched:", response.data); // Para depuración
-      setData(response.data); // Actualiza los datos de la tabla
+      console.log("Data fetched:", response.data);
+      setData(response.data);
     } catch (error) {
       console.error("Error fetching data:", error);
       message.error("Error al cargar los datos");
     }
   };
-  
-  
-  
 
   const addCaseRent = async (values: TableData) => {
     try {
@@ -109,7 +115,7 @@ export const CaseRentsForm: React.FC = () => {
       await axios.post("http://localhost:5000/api/case-rents", values);
       fetchData();
       message.success("Caso agregado correctamente");
-      form.resetFields(); // Formatear el formulario
+      resetForm();
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.data?.error) {
         message.error(error.response.data.error);
@@ -133,102 +139,58 @@ export const CaseRentsForm: React.FC = () => {
   const openEditModal = (record: TableData) => {
     setEditingCase(record);
     setIsModalVisible(true);
-  
-    // Busca el nombre del protocolista a partir del ID
+
     form.setFieldsValue({
       ...record,
       creation_date: dayjs(record.creation_date),
       document_date: dayjs(record.document_date),
-      protocolista: record.protocolista, // Usa directamente el ID del protocolista
+      protocolista: record.protocolista,
     });
   };
-  
-  
-  
 
-  interface AxiosError {
-    response?: {
-      data?: {
-        error?: string;
-      };
-    };
-  }
-
-  const updateCaseRent = async (values: Partial<TableData>) => {
+  const sendEmailAndMoveCase = async (record: TableData) => {
+    const protocolistaId = Number(record.protocolista);
+    const protocolista = protocolistMap[protocolistaId];
+  
+    if (!protocolista || !protocolista.email) {
+      return message.error("El correo del protocolista no fue encontrado. Verifique los datos.");
+    }
+  
+    setIsSending(true);
+  
     try {
-      if (!editingCase) return;
-
-      const changedFields = Object.entries(values).reduce((acc, [key, value]) => {
-        const currentValue = editingCase[key as keyof TableData];
-        if (currentValue !== undefined && currentValue !== value) {
-          acc[key as keyof TableData] = value as never;
+      // Paso 1: Enviar correo
+      const emailResponse = await axios.post("http://localhost:5000/api/send-email", {
+        to: protocolista.email,
+        subject: "Notificación de Caso",
+        text: `Estimado(a) ${protocolista.fullName}, se le informa sobre un nuevo caso asignado:
+               - Número de escritura: ${record.escritura}
+               - Número de radicado: ${record.radicado}
+               - Fecha del documento: ${record.document_date}`,
+      });
+  
+      if (emailResponse.status === 200) {
+        // Paso 2: Mover el caso al backend
+        const moveResponse = await axios.post(`http://localhost:5000/api/case-rents/move-to-finished`, {
+          caseId: record.id,
+        });
+  
+        if (moveResponse.status === 200) {
+          message.success(`Caso trasladado exitosamente. Correo enviado a ${protocolista.email}`);
+          fetchData(); // Refrescar los datos
+        } else {
+          throw new Error("No se pudo mover el caso.");
         }
-        return acc;
-      }, {} as Partial<TableData>);
-
-      const observationChanges = Object.entries(changedFields)
-        .map(([key, newValue]) => {
-          const oldValue = editingCase[key as keyof TableData];
-          return `${key}: "${oldValue}" -> "${newValue}"`;
-        })
-        .join(", ");
-
-      const updatedObservations = editingCase.observaciones
-        ? `${editingCase.observaciones} | Cambios: ${observationChanges}`
-        : `Cambios: ${observationChanges}`;
-
-      changedFields.observaciones = updatedObservations;
-
-      if (Object.keys(changedFields).length === 0) {
-        message.info("No se detectaron cambios para actualizar.");
-        return;
-      }
-
-      await axios.put(
-        `http://localhost:5000/api/case-rents/${editingCase.id}`,
-        changedFields
-      );
-      fetchData();
-      message.success("Caso actualizado correctamente");
-      handleModalCancel();
-    } catch (error: unknown) {
-      if (
-        typeof error === "object" &&
-        error !== null &&
-        "response" in error &&
-        typeof (error as AxiosError).response === "object" &&
-        (error as AxiosError).response?.data?.error
-      ) {
-        message.error((error as AxiosError).response?.data?.error);
       } else {
-        message.error("Error al actualizar el caso.");
+        throw new Error("No se pudo enviar el correo.");
       }
+    } catch (error) {
+      console.error("Error al enviar correo o mover el caso:", error);
+      message.error("Error al intentar enviar el correo o trasladar el caso.");
+    } finally {
+      setIsSending(false);
     }
   };
-
-  useEffect(() => {
-    fetchData();
-    const fetchProtocolists = async () => {
-      try {
-        const response = await axios.get("http://localhost:5000/api/protocolist-rents");
-        const formattedOptions = response.data.map((protocolist: Protocolist) => ({
-          value: protocolist.id,
-          label: `${protocolist.complete_name} ${protocolist.last_name}`,
-        }));
-        const protocolistMap = response.data.reduce((map: Record<number, string>, protocolist: Protocolist) => {
-          map[protocolist.id] = `${protocolist.complete_name} ${protocolist.last_name}`;
-          return map;
-        }, {});
-        setProtocolistOptions(formattedOptions);
-        setProtocolistMap(protocolistMap);
-      } catch (error) {
-        console.error("Error fetching protocolists:", error);
-        message.error("Error al cargar los protocolistas");
-      }
-    };
-  
-    fetchProtocolists();
-  }, []);
   
 
   const tableColumns = [
@@ -265,14 +227,19 @@ export const CaseRentsForm: React.FC = () => {
       visible: visibleColumns.includes("radicado"),
     },
     {
-      title: "Protocolista",
-      dataIndex: "protocolista",
-      key: "protocolista",
-      visible: visibleColumns.includes("protocolista"),
-      render: (protocolistaId: number) => protocolistMap[protocolistaId] || "Desconocido",
+      title: "Nombre del Protocolista",
+      key: "protocolista_fullName",
+      visible: visibleColumns.includes("protocolista_fullName"),
+      render: (_: unknown, record: TableData) =>
+        protocolistMap[Number(record.protocolista)]?.fullName || "Desconocido",
     },
-    
-    
+    {
+      title: "Correo del Protocolista",
+      key: "protocolista_email",
+      visible: visibleColumns.includes("protocolista_email"),
+      render: (_: unknown, record: TableData) =>
+        protocolistMap[Number(record.protocolista)]?.email || "Desconocido",
+    },
     {
       title: "Observaciones",
       dataIndex: "observaciones",
@@ -289,144 +256,204 @@ export const CaseRentsForm: React.FC = () => {
       title: "Acciones",
       key: "acciones",
       fixed: "right" as const,
-      width: 150,
+      width: 100,
       visible: true,
       render: (_: unknown, record: TableData) => (
-        <Space>
-          <Button type="link" onClick={() => openEditModal(record)}>
-            Editar
-          </Button>
-          <Button type="link" onClick={() => deleteCaseRent(record.id)}>
-            Eliminar
-          </Button>
-        </Space>
+        <Dropdown
+          menu={{
+            items: [
+              { label: "Editar", key: "edit", onClick: () => openEditModal(record) },
+              { label: "Eliminar", key: "delete", onClick: () => deleteCaseRent(record.id) },
+              {
+                label: (
+                  <>
+                    {isSending ? (
+                      <LoadingOutlined style={{ marginRight: 8 }} />
+                    ) : null}
+                    Enviar correo
+                  </>
+                ),
+                key: "send-email",
+                onClick: () => sendEmailAndMoveCase(record),
+                disabled: isSending,
+              },
+            ],
+          }}
+        >
+          <Button type="text" icon={<EllipsisOutlined />} />
+        </Dropdown>
       ),
     },
   ].filter((col) => col.visible);
 
-  const onModalFinish = (values: Partial<TableData>) => {
-    const formattedValues = {
-      ...values,
-      creation_date: values.creation_date
-        ? dayjs(values.creation_date).format("YYYY-MM-DD")
-        : editingCase?.creation_date,
-      document_date: values.document_date
-        ? dayjs(values.document_date).format("YYYY-MM-DD")
-        : editingCase?.document_date,
+  useEffect(() => {
+    fetchData();
+    const fetchProtocolists = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/protocolist-rents");
+        const formattedOptions = response.data.map((protocolist: Protocolist) => ({
+          value: protocolist.id,
+          label: `${protocolist.complete_name} ${protocolist.last_name}`,
+        }));
+        const protocolistMap = response.data.reduce((map: Record<number, { fullName: string; email: string }>, protocolist: Protocolist) => {
+          map[protocolist.id] = {
+            fullName: `${protocolist.complete_name} ${protocolist.last_name}`,
+            email: protocolist.email,
+          };
+          return map;
+        }, {});
+        setProtocolistOptions(formattedOptions);
+        setProtocolistMap(protocolistMap);
+      } catch (error) {
+        console.error("Error fetching protocolists:", error);
+        message.error("Error al cargar los protocolistas");
+      }
     };
 
-    updateCaseRent(formattedValues);
+    fetchProtocolists();
+  }, []);
+
+  const updateCaseRent = async (values: Partial<TableData>) => {
+    try {
+      if (!editingCase) return;
+
+      const response = await axios.put(
+        `http://localhost:5000/api/case-rents/${editingCase.id}`,
+        values
+      );
+
+      console.log("Respuesta del servidor:", response.data);
+
+      message.success("Caso actualizado correctamente");
+      fetchData();
+      setIsModalVisible(false);
+    } catch (error) {
+      console.error("Error al actualizar el caso:", error);
+      message.error("Error al actualizar el caso");
+    }
   };
 
-  const onFinish = (values: Record<string, unknown>) => {
-    const formattedValues: Partial<TableData> = {
-      ...values,
-      creation_date: values.creation_date
-        ? dayjs(values.creation_date as string).format("YYYY-MM-DD")
-        : "",
-      document_date: values.document_date
-        ? dayjs(values.document_date as string).format("YYYY-MM-DD")
-        : "",
-    };
-
-    addCaseRent(formattedValues as TableData);
-  };
+  const loadingIcon = <LoadingOutlined style={{ fontSize: 24 }} spin />;
 
   return (
-    <Layout>
-      <Header />
+    <Spin
+      spinning={isSending}
+      tip="Enviando correo..."
+      indicator={loadingIcon}
+      style={{
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        zIndex: 1000,
+      }}
+    >
       <Layout>
-        <Sider collapsible style={{ backgroundColor: "#FFF" }}>
-          <Sidebar />
-        </Sider>
-        <Content style={{ padding: "16px" }}>
-          <Breadcrumb style={{ marginBottom: "16px" }}>
-            <Breadcrumb.Item>Inicio</Breadcrumb.Item>
-            <Breadcrumb.Item>Radicados de Rentas</Breadcrumb.Item>
-          </Breadcrumb>
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <Card title={<Title level={5}>Crear Caso</Title>}>
-              <Form
-                layout="vertical"
-                size={componentSize}
-                onFinish={onFinish}
-                form={form} // Vincular el formulario
-                initialValues={{
-                  creation_date: dayjs(), // Establecer la fecha actual como valor inicial
-                }}
-              >
-                <Row gutter={16}>
-                  <Col span={12}>
-                  <Form.Item
-                    label="Fecha"
-                    name="creation_date"
-                    initialValue={dayjs()} // Valor inicial establecido con la fecha actual
-                    rules={[{ required: true, message: "Seleccione una fecha" }]}
-                  >
-                    <DatePicker style={{ width: "100%" }} disabled /> {/* Campo deshabilitado */}
+        <Header />
+        <Layout>
+          <Sider collapsible style={{ backgroundColor: "#FFF" }}>
+            <Sidebar />
+          </Sider>
+          <Content style={{ padding: "16px" }}>
+            <Breadcrumb
+              items={[
+                { title: "Inicio" },
+                { title: "Radicados de Rentas" },
+              ]}
+            />
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <Card title={<Title level={5}>Crear Caso</Title>}>
+                <Form
+                  layout="vertical"
+                  size={componentSize}
+                  onFinish={(values) => {
+                    const formattedValues: Partial<TableData> = {
+                      ...values,
+                      creation_date: values.creation_date
+                        ? dayjs(values.creation_date as string).format("YYYY-MM-DD")
+                        : "",
+                      document_date: values.document_date
+                        ? dayjs(values.document_date as string).format("YYYY-MM-DD")
+                        : "",
+                    };
+
+                    addCaseRent(formattedValues as TableData);
+                  }}
+                  form={form}
+                  initialValues={{ creation_date: dayjs() }}
+                >
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        label="Fecha"
+                        name="creation_date"
+                        initialValue={dayjs()}
+                        rules={[{ required: true, message: "Seleccione una fecha" }]}
+                      >
+                        <DatePicker style={{ width: "100%" }} disabled />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        label="Fecha del Documento"
+                        name="document_date"
+                        rules={[{ required: true, message: "Seleccione la fecha del documento" }]}
+                      >
+                        <DatePicker style={{ width: "100%" }} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        label="Escritura"
+                        name="escritura"
+                        rules={[{ required: true, message: "Ingrese el número de escritura" }]}
+                      >
+                        <Input placeholder="Ej: 12345" />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        label="Radicado"
+                        name="radicado"
+                        rules={[{ required: true, message: "Ingrese el radicado" }]}
+                      >
+                        <Input placeholder="Ej: 20240101234432" />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        label="Protocolista"
+                        name="protocolista"
+                        rules={[{ required: true, message: "Seleccione un protocolista" }]}
+                      >
+                        <Select placeholder="Seleccione un protocolista" options={protocolistOptions} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item label="Observaciones" name="observaciones">
+                        <Input.TextArea placeholder="Observaciones adicionales (opcional)" />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Form.Item>
+                    <Button type="primary" htmlType="submit">
+                      Agregar Caso
+                    </Button>
                   </Form.Item>
+                </Form>
+              </Card>
 
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Fecha del Documento"
-                      name="document_date"
-                      rules={[{ required: true, message: "Seleccione la fecha del documento" }]}
-                    >
-                      <DatePicker style={{ width: "100%" }} />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Escritura"
-                      name="escritura"
-                      rules={[{ required: true, message: "Ingrese el número de escritura" }]}
-                    >
-                      <Input placeholder="Ej: 12345" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Radicado"
-                      name="radicado"
-                      rules={[{ required: true, message: "Ingrese el radicado" }]}
-                    >
-                      <Input placeholder="Ej: 20240101234432" />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                  <Form.Item
-                    label="Protocolista"
-                    name="protocolista"
-                    rules={[{ required: true, message: "Seleccione un protocolista" }]}
-                  >
-                    <Select placeholder="Seleccione un protocolista" options={protocolistOptions} />
-                  </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Observaciones" name="observaciones">
-                      <Input.TextArea placeholder="Observaciones adicionales (opcional)" />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item>
-                  <Button type="primary" htmlType="submit">
-                    Agregar Caso
-                  </Button>
-                </Form.Item>
-              </Form>
-            </Card>
-
-            <Card title={<Title level={5}>Información de Radicados de Rentas</Title>}>
-              <Table columns={tableColumns} dataSource={data} pagination={{ pageSize }} rowKey="id" />
-            </Card>
+              <Card title={<Title level={5}>Información de Radicados de Rentas</Title>}>
+                <Table columns={tableColumns} dataSource={data} pagination={{ pageSize }} rowKey="id" />
+              </Card>
 
             <Card title={<Title level={5}>Configuración</Title>}>
               <div style={{ marginTop: "16px" }}>
@@ -473,7 +500,16 @@ export const CaseRentsForm: React.FC = () => {
             footer={null}
           >
             <Checkbox.Group
-              options={["id", "creation_date", "escritura", "document_date", "radicado", "protocolista", "observaciones"]}
+              options={[
+                "id",
+                "creation_date",
+                "escritura",
+                "document_date",
+                "radicado",
+                "protocolista_fullName",
+                "protocolista_email",
+                "observaciones",
+              ]}
               value={visibleColumns}
               onChange={(selectedColumns) => setVisibleColumns(selectedColumns as string[])}
             />
@@ -488,7 +524,19 @@ export const CaseRentsForm: React.FC = () => {
             <Form
               form={form}
               layout="vertical"
-              onFinish={onModalFinish}
+              onFinish={(values: Partial<TableData>) => {
+                const formattedValues = {
+                  ...values,
+                  creation_date: values.creation_date
+                    ? dayjs(values.creation_date).format("YYYY-MM-DD")
+                    : editingCase?.creation_date,
+                  document_date: values.document_date
+                    ? dayjs(values.document_date).format("YYYY-MM-DD")
+                    : editingCase?.document_date,
+                };
+
+                updateCaseRent(formattedValues);
+              }}
             >
               <Row gutter={16}>
                 <Col span={12}>
@@ -532,43 +580,44 @@ export const CaseRentsForm: React.FC = () => {
                     label="Radicado"
                     name="radicado"
                     rules={[{ required: true, message: "Ingrese el radicado" }]}
-                  >
-                    <Input />
-                  </Form.Item>
-                </Col>
-              </Row>
-              <Row gutter={16}>
-                <Col span={12}>
-                <Form.Item
-                  label="Protocolista"
-                  name="protocolista"
-                  rules={[{ required: true, message: "Seleccione un protocolista" }]}
-                >
-                  <Select
-                    placeholder="Seleccione un protocolista"
-                    options={protocolistOptions} // Usa las opciones cargadas con nombres
-                  />
+                    >
+                      <Input placeholder="Ej: 20240101234432" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Protocolista"
+                      name="protocolista"
+                      rules={[{ required: true, message: "Seleccione un protocolista" }]}
+                    >
+                      <Select
+                        placeholder="Seleccione un protocolista"
+                        options={protocolistOptions}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Observaciones"
+                      name="observaciones"
+                    >
+                      <Input.TextArea placeholder="Observaciones adicionales (opcional)" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Form.Item>
+                  <Button type="primary" htmlType="submit">
+                    Guardar Cambios
+                  </Button>
                 </Form.Item>
-
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    label="Observaciones"
-                    name="observaciones"
-                  >
-                    <Input.TextArea placeholder="Observaciones adicionales (opcional)" />
-                  </Form.Item>
-                </Col>
-              </Row>
-              <Form.Item>
-                <Button type="primary" htmlType="submit">
-                  Guardar Cambios
-                </Button>
-              </Form.Item>
-            </Form>
-          </Modal>
-        </Content>
+              </Form>
+            </Modal>
+          </Content>
+        </Layout>
       </Layout>
-    </Layout>
-  );
-};
+      </Spin>
+    );
+  };
+  
