@@ -58,11 +58,9 @@ export const CaseRentsForm: React.FC = () => {
   const [data, setData] = useState<TableData[]>([]);
   const [protocolistOptions, setProtocolistOptions] = useState([]);
   const [editingCase, setEditingCase] = useState<TableData | null>(null);
-  const [protocolistMap, setProtocolistMap] = useState<
-   Record<number, { fullName: string; email: string }>
->({});
+  const [protocolistMap, setProtocolistMap] = useState<Record<number, { fullName: string; email: string }>>({});
   const [isSending, setIsSending] = useState(false);
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(["id", "creation_date", "escritura", "document_date", "radicado", "protocolista_fullName","protocolista_email", "observaciones"]);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(["id", "creation_date", "escritura", "document_date", "radicado", "protocolista_fullName", "protocolista_email", "observaciones"]);
   const [form] = Form.useForm();
 
   const handleFormLayoutChange = (e: RadioChangeEvent) => {
@@ -82,8 +80,8 @@ export const CaseRentsForm: React.FC = () => {
   };
 
   const resetForm = () => {
-    form.resetFields(); // Resetea los demás campos del formulario
-    form.setFieldsValue({ creation_date: dayjs() }); // Establece la fecha actual en "creation_date"
+    form.resetFields();
+    form.setFieldsValue({ creation_date: dayjs() });
   };
 
   const handleModalCancel = () => {
@@ -95,8 +93,8 @@ export const CaseRentsForm: React.FC = () => {
   const fetchData = async () => {
     try {
       const response = await axios.get("http://localhost:5000/api/case-rents");
-      console.log("Data fetched:", response.data); // Para depuración
-      setData(response.data); // Actualiza los datos de la tabla
+      console.log("Data fetched:", response.data);
+      setData(response.data);
     } catch (error) {
       console.error("Error fetching data:", error);
       message.error("Error al cargar los datos");
@@ -117,7 +115,7 @@ export const CaseRentsForm: React.FC = () => {
       await axios.post("http://localhost:5000/api/case-rents", values);
       fetchData();
       message.success("Caso agregado correctamente");
-      resetForm(); // Llama a la función para resetear el formulario manteniendo la fecha actual
+      resetForm();
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.data?.error) {
         message.error(error.response.data.error);
@@ -142,17 +140,15 @@ export const CaseRentsForm: React.FC = () => {
     setEditingCase(record);
     setIsModalVisible(true);
 
-    // Busca el nombre del protocolista a partir del ID
     form.setFieldsValue({
       ...record,
       creation_date: dayjs(record.creation_date),
       document_date: dayjs(record.document_date),
-      protocolista: record.protocolista, // Usa directamente el ID del protocolista
+      protocolista: record.protocolista,
     });
   };
 
-  
-  const sendEmail = async (record: TableData) => {
+  const sendEmailAndMoveCase = async (record: TableData) => {
     const protocolistaId = Number(record.protocolista);
     const protocolista = protocolistMap[protocolistaId];
   
@@ -163,7 +159,7 @@ export const CaseRentsForm: React.FC = () => {
     setIsSending(true);
   
     try {
-      // Enviar el correo
+      // Paso 1: Enviar correo
       const emailResponse = await axios.post("http://localhost:5000/api/send-email", {
         to: protocolista.email,
         subject: "Notificación de Caso",
@@ -174,24 +170,27 @@ export const CaseRentsForm: React.FC = () => {
       });
   
       if (emailResponse.status === 200) {
-        // Trasladar el caso al backend
-        const moveResponse = await axios.post(`http://localhost:5000/api/case-rents/move-to-finished/${record.id}`);
+        // Paso 2: Mover el caso al backend
+        const moveResponse = await axios.post(`http://localhost:5000/api/case-rents/move-to-finished`, {
+          caseId: record.id,
+        });
+  
         if (moveResponse.status === 200) {
           message.success(`Caso trasladado exitosamente. Correo enviado a ${protocolista.email}`);
-          fetchData(); // Refrescar tabla de casos
+          fetchData(); // Refrescar los datos
+        } else {
+          throw new Error("No se pudo mover el caso.");
         }
       } else {
-        message.error("No se pudo enviar el correo. Por favor, intente nuevamente.");
+        throw new Error("No se pudo enviar el correo.");
       }
     } catch (error) {
-      console.error("Error al enviar el correo o trasladar el caso:", error);
+      console.error("Error al enviar correo o mover el caso:", error);
       message.error("Error al intentar enviar el correo o trasladar el caso.");
     } finally {
       setIsSending(false);
     }
   };
-    
-
   
 
   const tableColumns = [
@@ -241,7 +240,6 @@ export const CaseRentsForm: React.FC = () => {
       render: (_: unknown, record: TableData) =>
         protocolistMap[Number(record.protocolista)]?.email || "Desconocido",
     },
-       
     {
       title: "Observaciones",
       dataIndex: "observaciones",
@@ -276,8 +274,8 @@ export const CaseRentsForm: React.FC = () => {
                   </>
                 ),
                 key: "send-email",
-                onClick: () => sendEmail(record),
-                disabled: isSending, // Desactivar el botón si el spinner está activo
+                onClick: () => sendEmailAndMoveCase(record),
+                disabled: isSending,
               },
             ],
           }}
@@ -285,9 +283,8 @@ export const CaseRentsForm: React.FC = () => {
           <Button type="text" icon={<EllipsisOutlined />} />
         </Dropdown>
       ),
-    },      
+    },
   ].filter((col) => col.visible);
-  
 
   useEffect(() => {
     fetchData();
@@ -304,7 +301,7 @@ export const CaseRentsForm: React.FC = () => {
             email: protocolist.email,
           };
           return map;
-        }, {});        
+        }, {});
         setProtocolistOptions(formattedOptions);
         setProtocolistMap(protocolistMap);
       } catch (error) {
@@ -312,7 +309,6 @@ export const CaseRentsForm: React.FC = () => {
         message.error("Error al cargar los protocolistas");
       }
     };
-    
 
     fetchProtocolists();
   }, []);
@@ -320,143 +316,144 @@ export const CaseRentsForm: React.FC = () => {
   const updateCaseRent = async (values: Partial<TableData>) => {
     try {
       if (!editingCase) return;
-  
+
       const response = await axios.put(
         `http://localhost:5000/api/case-rents/${editingCase.id}`,
         values
       );
-  
-      console.log("Respuesta del servidor:", response.data); // Usa el valor de response aquí
-  
+
+      console.log("Respuesta del servidor:", response.data);
+
       message.success("Caso actualizado correctamente");
-      fetchData(); // Refresca los datos después de la actualización
-      setIsModalVisible(false); // Cierra el modal de edición
+      fetchData();
+      setIsModalVisible(false);
     } catch (error) {
       console.error("Error al actualizar el caso:", error);
       message.error("Error al actualizar el caso");
     }
-  };  
+  };
+
   const loadingIcon = <LoadingOutlined style={{ fontSize: 24 }} spin />;
 
-
   return (
-<Spin
-  spinning={isSending}
-  tip="Enviando correo..."
-  indicator={loadingIcon}
-  style={{
-    position: "fixed",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    zIndex: 1000, // Asegura que el spinner esté por encima de otros elementos
-  }}
->
-    <Layout>
-      <Header />
+    <Spin
+      spinning={isSending}
+      tip="Enviando correo..."
+      indicator={loadingIcon}
+      style={{
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        zIndex: 1000,
+      }}
+    >
       <Layout>
-        <Sider collapsible style={{ backgroundColor: "#FFF" }}>
-          <Sidebar />
-        </Sider>
-        <Content style={{ padding: "16px" }}>
-          <Breadcrumb
+        <Header />
+        <Layout>
+          <Sider collapsible style={{ backgroundColor: "#FFF" }}>
+            <Sidebar />
+          </Sider>
+          <Content style={{ padding: "16px" }}>
+            <Breadcrumb
               items={[
-                { title: 'Inicio' },
-                { title: 'Radicados de Rentas' },
+                { title: "Inicio" },
+                { title: "Radicados de Rentas" },
               ]}
             />
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <Card title={<Title level={5}>Crear Caso</Title>}>
-              <Form
-                layout="vertical"
-                size={componentSize}
-                onFinish={(values) => {
-                  const formattedValues: Partial<TableData> = {
-                    ...values,
-                    creation_date: values.creation_date
-                      ? dayjs(values.creation_date as string).format("YYYY-MM-DD")
-                      : "",
-                    document_date: values.document_date
-                      ? dayjs(values.document_date as string).format("YYYY-MM-DD")
-                      : "",
-                  };
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <Card title={<Title level={5}>Crear Caso</Title>}>
+                <Form
+                  layout="vertical"
+                  size={componentSize}
+                  onFinish={(values) => {
+                    const formattedValues: Partial<TableData> = {
+                      ...values,
+                      creation_date: values.creation_date
+                        ? dayjs(values.creation_date as string).format("YYYY-MM-DD")
+                        : "",
+                      document_date: values.document_date
+                        ? dayjs(values.document_date as string).format("YYYY-MM-DD")
+                        : "",
+                    };
 
-                  addCaseRent(formattedValues as TableData);
-                }}
-                form={form}
-                initialValues={{ creation_date: dayjs() }}>
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Fecha"
-                      name="creation_date"
-                      initialValue={dayjs()}
-                      rules={[{ required: true, message: "Seleccione una fecha" }]}
-                    >
-                      <DatePicker style={{ width: "100%" }} disabled />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Fecha del Documento"
-                      name="document_date"
-                      rules={[{ required: true, message: "Seleccione la fecha del documento" }]}
-                    >
-                      <DatePicker style={{ width: "100%" }} />
-                    </Form.Item>
-                  </Col>
-                </Row>
+                    addCaseRent(formattedValues as TableData);
+                  }}
+                  form={form}
+                  initialValues={{ creation_date: dayjs() }}
+                >
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        label="Fecha"
+                        name="creation_date"
+                        initialValue={dayjs()}
+                        rules={[{ required: true, message: "Seleccione una fecha" }]}
+                      >
+                        <DatePicker style={{ width: "100%" }} disabled />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        label="Fecha del Documento"
+                        name="document_date"
+                        rules={[{ required: true, message: "Seleccione la fecha del documento" }]}
+                      >
+                        <DatePicker style={{ width: "100%" }} />
+                      </Form.Item>
+                    </Col>
+                  </Row>
 
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Escritura"
-                      name="escritura"
-                      rules={[{ required: true, message: "Ingrese el número de escritura" }]}
-                    >
-                      <Input placeholder="Ej: 12345" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Radicado"
-                      name="radicado"
-                      rules={[{ required: true, message: "Ingrese el radicado" }]}
-                    >
-                      <Input placeholder="Ej: 20240101234432" />
-                    </Form.Item>
-                  </Col>
-                </Row>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        label="Escritura"
+                        name="escritura"
+                        rules={[{ required: true, message: "Ingrese el número de escritura" }]}
+                      >
+                        <Input placeholder="Ej: 12345" />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        label="Radicado"
+                        name="radicado"
+                        rules={[{ required: true, message: "Ingrese el radicado" }]}
+                      >
+                        <Input placeholder="Ej: 20240101234432" />
+                      </Form.Item>
+                    </Col>
+                  </Row>
 
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="Protocolista"
-                      name="protocolista"
-                      rules={[{ required: true, message: "Seleccione un protocolista" }]}
-                    >
-                      <Select placeholder="Seleccione un protocolista" options={protocolistOptions} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Observaciones" name="observaciones">
-                      <Input.TextArea placeholder="Observaciones adicionales (opcional)" />
-                    </Form.Item>
-                  </Col>
-                </Row>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        label="Protocolista"
+                        name="protocolista"
+                        rules={[{ required: true, message: "Seleccione un protocolista" }]}
+                      >
+                        <Select placeholder="Seleccione un protocolista" options={protocolistOptions} />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item label="Observaciones" name="observaciones">
+                        <Input.TextArea placeholder="Observaciones adicionales (opcional)" />
+                      </Form.Item>
+                    </Col>
+                  </Row>
 
-                <Form.Item>
-                  <Button type="primary" htmlType="submit">
-                    Agregar Caso
-                  </Button>
-                </Form.Item>
-              </Form>
-            </Card>
+                  <Form.Item>
+                    <Button type="primary" htmlType="submit">
+                      Agregar Caso
+                    </Button>
+                  </Form.Item>
+                </Form>
+              </Card>
 
-            <Card title={<Title level={5}>Información de Radicados de Rentas</Title>}>
-              <Table columns={tableColumns} dataSource={data} pagination={{ pageSize }} rowKey="id" />
-            </Card>
+              <Card title={<Title level={5}>Información de Radicados de Rentas</Title>}>
+                <Table columns={tableColumns} dataSource={data} pagination={{ pageSize }} rowKey="id" />
+              </Card>
 
             <Card title={<Title level={5}>Configuración</Title>}>
               <div style={{ marginTop: "16px" }}>
