@@ -4,6 +4,8 @@ import cors from 'cors';
 import caseRentsRoutes from './routes/caseRentsRoutes';
 import protocolistRentsRoutes from './routes/protocolistRentsRoutes';
 import emailRoutes from './routes/emailRoutes';
+import caseRentsFinishedRoutes from "./routes/caseRentsFinishedRoutes";
+
 
 const app = express();
 const PORT = 5000;
@@ -18,6 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api', caseRentsRoutes);
 app.use('/api', protocolistRentsRoutes);
 app.use('/api', emailRoutes);
+app.use("/api", caseRentsFinishedRoutes);
 
 // Servidor
 app.listen(PORT, () => {
