@@ -56,19 +56,11 @@ export const CaseRentsFinished: React.FC = () => {
   const [componentSize, setComponentSize] = useState<"small" | "middle" | "large">("middle");
   const [pageSize, setPageSize] = useState(10);
   const [data, setData] = useState<TableData[]>([]);
-  const [protocolistMap, setProtocolistMap] = useState<Record<number, Protocolist>>({});
-  const [visibleColumns, setVisibleColumns] = useState<string[]>([
-    "id",
-    "creation_date",
-    "document_date",
-    "escritura",
-    "radicado",
-    "protocolista_name",
-    "protocolista_email",
-    "observaciones",
-  ]);
+  const [protocolistMap, setProtocolistMap] = useState<Record<number, { fullName: string; email: string }>>({});
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(["id", "creation_date", "escritura", "document_date", "radicado", "protocolista_fullName", "protocolista_email", "observaciones"]);
   const [isColumnConfigVisible, setIsColumnConfigVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [protocolistOptions, setProtocolistOptions] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingCase, setEditingCase] = useState<TableData | null>(null);
   const [form] = Form.useForm();
@@ -82,33 +74,16 @@ export const CaseRentsFinished: React.FC = () => {
     try {
       const response = await axios.get("http://localhost:5000/api/case-rents-finished");
       if (Array.isArray(response.data)) {
-        setData(response.data);
+        const validData = response.data.filter((item: TableData) => item.id);
+        setData(validData);
       } else {
-        console.error("Unexpected API Response Format:", response);
-        message.error("Error: Datos no tienen el formato esperado.");
+        message.error("Datos inválidos recibidos.");
       }
     } catch (error) {
       console.error("Error fetching data:", error);
       message.error("Error al cargar los datos.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchProtocolists = async () => {
-    try {
-      const response = await axios.get("http://localhost:5000/api/protocolist-rents");
-      const formattedMap = response.data.reduce((map: Record<number, Protocolist>, protocolist: Protocolist) => {
-        map[protocolist.id] = {
-          ...protocolist,
-          fullName: `${protocolist.complete_name} ${protocolist.last_name}`,
-        };
-        return map;
-      }, {});
-      setProtocolistMap(formattedMap);
-    } catch (error) {
-      console.error("Error fetching protocolists:", error);
-      message.error("Error al cargar los datos de protocolistas.");
     }
   };
 
@@ -126,29 +101,38 @@ export const CaseRentsFinished: React.FC = () => {
   const openEditModal = (record: TableData) => {
     setEditingCase(record);
     setIsModalVisible(true);
+
     form.setFieldsValue({
       ...record,
       creation_date: dayjs(record.creation_date),
       document_date: dayjs(record.document_date),
-      protocolista: record.protocolista.id,
+      protocolista: record.protocolista,
     });
   };
+  
 
   const updateCase = async (values: Partial<TableData>) => {
-    if (!editingCase) return;
     try {
-      await axios.put(`http://localhost:5000/api/case-rents-finished/${editingCase.id}`, values);
-      message.success("Caso actualizado correctamente.");
+      if (!editingCase) return;
+
+      const response = await axios.put(
+        `http://localhost:5000/api/case-rents/${editingCase.id}`,
+        values
+      );
+
+      console.log("Respuesta del servidor:", response.data);
+
+      message.success("Caso actualizado correctamente");
       fetchData();
       setIsModalVisible(false);
     } catch (error) {
       console.error("Error al actualizar el caso:", error);
-      message.error("Error al actualizar el caso.");
+      message.error("Error al actualizar el caso");
     }
   };
 
   const sendEmail = async (record: TableData) => {
-    const protocolista = protocolistMap[record.protocolista.id];
+    const protocolista = protocolistMap[record.protocolista?.id];
     if (!protocolista || !protocolista.email) {
       return message.error("El correo del protocolista no fue encontrado.");
     }
@@ -165,6 +149,27 @@ export const CaseRentsFinished: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+    const fetchProtocolists = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/protocolist-rents");
+        const formattedOptions = response.data.map((protocolist: Protocolist) => ({
+          value: protocolist.id,
+          label: `${protocolist.complete_name} ${protocolist.last_name}`,
+        }));
+        const protocolistMap = response.data.reduce((map: Record<number, { fullName: string; email: string }>, protocolist: Protocolist) => {
+          map[protocolist.id] = {
+            fullName: `${protocolist.complete_name} ${protocolist.last_name}`,
+            email: protocolist.email,
+          };
+          return map;
+        }, {});
+        setProtocolistOptions(formattedOptions);
+        setProtocolistMap(protocolistMap);
+      } catch (error) {
+        console.error("Error fetching protocolists:", error);
+        message.error("Error al cargar los protocolistas");
+      }
+    };
     fetchProtocolists();
   }, []);
 
@@ -202,17 +207,17 @@ export const CaseRentsFinished: React.FC = () => {
     },
     {
       title: "Nombre del Protocolista",
-      key: "protocolista_name",
+      key: "protocolista_fullName",
+      visible: visibleColumns.includes("protocolista_fullName"),
       render: (_: unknown, record: TableData) =>
-        protocolistMap[record.protocolista.id]?.fullName || "Desconocido",
-      visible: visibleColumns.includes("protocolista_name"),
+        protocolistMap[Number(record.protocolista)]?.fullName || "Desconocido",
     },
     {
       title: "Correo del Protocolista",
       key: "protocolista_email",
-      render: (_: unknown, record: TableData) =>
-        protocolistMap[record.protocolista.id]?.email || "Desconocido",
       visible: visibleColumns.includes("protocolista_email"),
+      render: (_: unknown, record: TableData) =>
+        protocolistMap[Number(record.protocolista)]?.email || "Desconocido",
     },
     {
       title: "Observaciones",
@@ -224,6 +229,9 @@ export const CaseRentsFinished: React.FC = () => {
     {
       title: "Acciones",
       key: "acciones",
+      fixed: "right" as const,
+      width: 100,
+      visible: true,
       render: (_: unknown, record: TableData) => (
         <Dropdown
           menu={{
@@ -326,7 +334,7 @@ export const CaseRentsFinished: React.FC = () => {
                 "document_date",
                 "escritura",
                 "radicado",
-                "protocolista_name",
+                "protocolista_fullName",
                 "protocolista_email",
                 "observaciones",
               ]}
@@ -389,18 +397,13 @@ export const CaseRentsFinished: React.FC = () => {
                 <Input placeholder="Ej: 20240101234432" />
               </Form.Item>
 
-              <Form.Item
-                label="Protocolista"
-                name="protocolista"
-                rules={[{ required: true, message: "Seleccione un protocolista" }]}
-              >
-                <Select
-                  options={Object.values(protocolistMap).map((protocolist) => ({
-                    value: protocolist.id,
-                    label: protocolist.fullName,
-                  }))}
-                />
-              </Form.Item>
+                      <Form.Item
+                        label="Protocolista"
+                        name="protocolista"
+                        rules={[{ required: true, message: "Seleccione un protocolista" }]}
+                      >
+                        <Select placeholder="Seleccione un protocolista" options={protocolistOptions} />
+                      </Form.Item>
 
               <Form.Item label="Observaciones" name="observaciones">
                 <Input.TextArea placeholder="Observaciones adicionales (opcional)" />
