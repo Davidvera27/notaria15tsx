@@ -65,7 +65,7 @@ router.get("/case-rents-finished", async (_req, res) => {
         cf.document_date,
         cf.escritura,
         cf.radicado,
-        cf.protocolista,
+        cf.protocolista AS protocolista_id,
         pr.complete_name AS protocolista_name,
         pr.last_name AS protocolista_last_name,
         pr.email AS protocolista_email,
@@ -79,7 +79,14 @@ router.get("/case-rents-finished", async (_req, res) => {
         console.error("Error fetching finished cases:", err);
         return res.status(500).json({ error: "Error fetching finished cases" });
       }
-      res.json(rows);
+      res.json(
+        rows.map((row) => ({
+          ...row,
+          protocolista_name: row.protocolista_name || "Desconocido",
+          protocolista_last_name: row.protocolista_last_name || "Desconocido",
+          protocolista_email: row.protocolista_email || "Desconocido",
+        }))
+      );
     });
   } catch (error) {
     console.error("Error fetching finished cases:", error);
@@ -131,6 +138,7 @@ router.post("/case-rents-finished", async (req, res) => {
 router.put("/case-rents-finished/:id", async (req, res) => {
   const { id } = req.params;
   const {
+    creation_date,
     document_date,
     escritura,
     radicado,
@@ -148,12 +156,12 @@ router.put("/case-rents-finished/:id", async (req, res) => {
 
     const query = `
       UPDATE case_rents_finished
-      SET document_date = ?, escritura = ?, radicado = ?, protocolista = ?, observaciones = ?, last_modified = ?
+      SET creation_date = ?, document_date = ?, escritura = ?, radicado = ?, protocolista = ?, observaciones = ?, last_modified = ?
       WHERE id = ?`;
 
     db.run(
       query,
-      [document_date, escritura, radicado, protocolista, observaciones, last_modified, id],
+      [creation_date, document_date, escritura, radicado, protocolista, observaciones, last_modified, id],
       function (err) {
         if (err) {
           console.error("Error al actualizar caso finalizado:", err);
@@ -196,7 +204,6 @@ router.post("/case-rents-finished/send-email", async (req, res) => {
         return res.status(404).json({ error: "Caso no encontrado" });
       }
 
-      // Simular el envío de correo (reemplazar con integración real de correo electrónico)
       console.log(`Correo enviado a ${row.protocolista_email}:
         Estimado(a) ${row.protocolista_name} ${row.protocolista_last_name},
         Se le informa sobre un caso finalizado:
