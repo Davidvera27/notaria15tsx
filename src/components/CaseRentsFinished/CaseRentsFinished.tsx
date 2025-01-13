@@ -112,22 +112,20 @@ export const CaseRentsFinished: React.FC = () => {
   
 
   const updateCase = async (values: Partial<TableData>) => {
+    if (!editingCase) return;
     try {
-      if (!editingCase) return;
-
-      const response = await axios.put(
-        `http://localhost:5000/api/case-rents/${editingCase.id}`,
-        values
-      );
-
-      console.log("Respuesta del servidor:", response.data);
-
-      message.success("Caso actualizado correctamente");
+      const updatedValues = {
+        ...values,
+        creation_date: dayjs(values.creation_date).format("YYYY-MM-DD"),
+        document_date: dayjs(values.document_date).format("YYYY-MM-DD"),
+      };
+      await axios.put(`http://localhost:5000/api/case-rents-finished/${editingCase.id}`, updatedValues);
+      message.success("Caso actualizado correctamente.");
       fetchData();
       setIsModalVisible(false);
     } catch (error) {
       console.error("Error al actualizar el caso:", error);
-      message.error("Error al actualizar el caso");
+      message.error("Error al actualizar el caso.");
     }
   };
 
