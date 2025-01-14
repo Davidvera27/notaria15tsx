@@ -141,7 +141,7 @@ router.delete('/protocolist-rents/:id', (req, res) => {
 
 
 
-// Login
+// Login pendiente corregir error password
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
