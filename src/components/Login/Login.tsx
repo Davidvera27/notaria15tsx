@@ -1,9 +1,11 @@
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { Tabs, Form, Input, Button, Typography, Flex } from "antd";
+import { Tabs, Form, Input, Button, Typography, Flex, notification } from "antd";
 import { useForm, Controller, FieldErrors } from "react-hook-form";
 import { useState } from "react";
+import axios from "axios";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "react-router-dom";
 
 const { Text } = Typography;
 
@@ -23,6 +25,7 @@ type RegisterValues = z.infer<typeof registerSchema>;
 
 export const Login = () => {
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
+  const navigate = useNavigate();
 
   const {
     control,
@@ -45,9 +48,65 @@ export const Login = () => {
     reset();
   };
 
-  const onSubmit = (data: unknown) => {
-    console.log("Submitted data:", data);
+  const onSubmit = async (data: unknown) => {
+    if (activeTab === "login") {
+      try {
+        const response = await axios.post("http://localhost:4000/api/login", data);
+        const { token, user } = response.data;
+
+        // Guardar el token y la fecha de expiración en localStorage
+        localStorage.setItem("token", token);
+        const expirationDate = new Date();
+        expirationDate.setHours(expirationDate.getHours() + 8); // Establece la expiración del token en 8 horas
+        localStorage.setItem("tokenExpiration", expirationDate.toISOString());
+
+        notification.success({
+          message: "Inicio de sesión exitoso",
+          description: `Bienvenido, ${user.complete_name}`,
+        });
+
+        // Redirige al usuario a la página deseada
+        navigate("/home");
+      } catch (error: any) {
+        const errorMessage =
+          error.response?.data?.error || "Ocurrió un error inesperado.";
+
+        notification.error({
+          message: "Error de inicio de sesión",
+          description: errorMessage,
+        });
+      }
+    } else {
+      console.log("Registro de usuario:", data);
+      // Aquí puedes agregar el endpoint para registrar usuarios
+    }
   };
+
+  // Verificación del token antes de renderizar el componente
+  const verifyToken = () => {
+    const token = localStorage.getItem("token");
+    const tokenExpiration = localStorage.getItem("tokenExpiration");
+
+    if (!token || !tokenExpiration) {
+      return false;
+    }
+
+    const expirationDate = new Date(tokenExpiration);
+    const currentDate = new Date();
+
+    if (currentDate > expirationDate) {
+      // Token expirado, eliminarlo
+      localStorage.removeItem("token");
+      localStorage.removeItem("tokenExpiration");
+      return false;
+    }
+
+    return true;
+  };
+
+  if (!verifyToken()) {
+    navigate("/login"); // Redirige al login si el token está expirado o no existe
+  }
 
   return (
     <Flex

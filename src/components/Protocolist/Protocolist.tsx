@@ -41,7 +41,7 @@ export const Protocolist: React.FC = () => {
   const fetchData = async () => {
     try {
         setLoading(true);
-        const response = await axios.get<ProtocolistData[]>("http://localhost:5000/api/protocolist-rents");
+        const response = await axios.get<ProtocolistData[]>("http://localhost:4000/api/protocolist-rents");
         setTableData(response.data);
     } catch (error: unknown) {
         if (error instanceof Error) {
