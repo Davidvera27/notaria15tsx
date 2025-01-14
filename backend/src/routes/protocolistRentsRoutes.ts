@@ -1,6 +1,6 @@
 import express from 'express';
 import db from '../database/db';
-
+import bcrypt from "bcrypt"
 const router = express.Router();
 
 interface Protocolist {
@@ -11,6 +11,7 @@ interface Protocolist {
   email: string;
   observations: string | null;
   ongoing_case: number;
+  password:string
 }
 
 // Obtener todos los protocolistas y actualizar casos activos
@@ -53,9 +54,9 @@ router.get('/protocolist-rents', (req, res) => {
 });
 
 // Crear un nuevo protocolista con validación de correo único
-router.post('/protocolist-rents', (req, res) => {
-  const { complete_name, last_name, email, observations } = req.body;
-
+router.post('/protocolist-rents', async (req, res) => {
+  const { complete_name, last_name, email, observations , password} = req.body;
+  const hashedPassword = await bcrypt.hash(password, 10);
   if (!complete_name || !last_name || !email) {
     return res.status(400).json({ error: 'Los campos nombre completo, apellidos y correo son obligatorios.' });
   }
@@ -74,10 +75,10 @@ router.post('/protocolist-rents', (req, res) => {
 
     // Insertar nuevo registro si el correo es único
     const insertQuery = `
-      INSERT INTO protocolist_rents (complete_name, last_name, email, observations)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO protocolist_rents (complete_name, last_name, email, hashedPassword, observations)
+      VALUES (?, ?, ?, ?, ?)
     `;
-    db.run(insertQuery, [complete_name, last_name, email, observations || null], function (insertErr) {
+    db.run(insertQuery, [complete_name, last_name, email, password, observations || null], function (insertErr) {
       if (insertErr) {
         console.error('Error al insertar protocolo:', insertErr.message);
         return res.status(500).json({ error: 'Error interno del servidor' });
@@ -88,10 +89,10 @@ router.post('/protocolist-rents', (req, res) => {
 });
 
 // Actualizar un protocolista
-router.put('/protocolist-rents/:id', (req, res) => {
+router.put('/protocolist-rents/:id', async (req, res) => {
   const { id } = req.params;
-  const { complete_name, last_name, email, observations } = req.body;
-
+  const { complete_name, last_name, email, observations , password} = req.body;
+  const hashedPassword = await bcrypt.hash(password, 10);
   if (!complete_name || !last_name || !email) {
     return res.status(400).json({ error: 'Los campos nombre completo, apellidos y correo son obligatorios.' });
   }
@@ -114,7 +115,7 @@ router.put('/protocolist-rents/:id', (req, res) => {
       SET complete_name = ?, last_name = ?, email = ?, observations = ?
       WHERE id = ?
     `;
-    db.run(updateQuery, [complete_name, last_name, email, observations || null, id], (updateErr) => {
+    db.run(updateQuery, [complete_name, last_name, email,hashedPassword, observations || null, id], (updateErr) => {
       if (updateErr) {
         console.error('Error al actualizar protocolo:', updateErr.message);
         return res.status(500).json({ error: 'Error interno del servidor' });
@@ -138,4 +139,30 @@ router.delete('/protocolist-rents/:id', (req, res) => {
   });
 });
 
+
+
+// Login
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: "Correo y contraseña son obligatorios" });
+  }
+
+  try {
+    const database = await db;
+    const user = await database.get(
+      "SELECT * FROM protocolist_rents WHERE email = ?",
+      [email]
+    );
+
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ message: "Credenciales inválidas" });
+    }
+
+   
+  } catch (error) {
+    res.status(500).json({ message: "Error interno del servidor", error });
+  }
+});
 export default router;
