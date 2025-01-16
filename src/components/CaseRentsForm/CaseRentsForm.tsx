@@ -40,6 +40,7 @@ type TableData = {
   radicado: string;
   protocolista: string;
   observaciones?: string;
+  status: string; // Propiedad agregada
 };
 
 type Protocolist = {
@@ -90,16 +91,18 @@ export const CaseRentsForm: React.FC = () => {
     form.resetFields();
   };
 
+  
   const fetchData = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/case-rents");
-      console.log("Data fetched:", response.data);
-      setData(response.data);
+        const response = await axios.get("http://localhost:5000/api/case-rents");
+        const filteredData = response.data.filter((caseItem: TableData) => caseItem.status === "in_progress");
+        setData(filteredData);
     } catch (error) {
-      console.error("Error fetching data:", error);
-      message.error("Error al cargar los datos");
+        console.error("Error fetching data:", error);
+        message.error("Error al cargar los datos");
     }
-  };
+};
+
 
   const addCaseRent = async (values: TableData) => {
     try {
