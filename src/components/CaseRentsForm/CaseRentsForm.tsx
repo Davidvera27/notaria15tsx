@@ -162,7 +162,7 @@ export const CaseRentsForm: React.FC = () => {
     setIsSending(true);
   
     try {
-      // Paso 1: Enviar correo
+      // Paso 1: Enviar el correo electrónico
       const emailResponse = await axios.post("http://localhost:5000/api/send-email", {
         to: protocolista.email,
         subject: "Notificación de Caso",
@@ -173,27 +173,28 @@ export const CaseRentsForm: React.FC = () => {
       });
   
       if (emailResponse.status === 200) {
-        // Paso 2: Mover el caso al backend
-        const moveResponse = await axios.post(`http://localhost:5000/api/case-rents/move-to-finished`, {
+        // Paso 2: Actualizar el estado del caso en la base de datos
+        const updateResponse = await axios.post("http://localhost:5000/api/case-rents/move-to-finished", {
           caseId: record.id,
         });
   
-        if (moveResponse.status === 200) {
-          message.success(`Caso trasladado exitosamente. Correo enviado a ${protocolista.email}`);
-          fetchData(); // Refrescar los datos
+        if (updateResponse.status === 200) {
+          message.success(`Caso actualizado correctamente. Correo enviado a ${protocolista.email}`);
+          fetchData(); // Actualizar la lista de casos
         } else {
-          throw new Error("No se pudo mover el caso.");
+          throw new Error("Error al actualizar el estado del caso.");
         }
       } else {
-        throw new Error("No se pudo enviar el correo.");
+        throw new Error("Error al enviar el correo.");
       }
     } catch (error) {
-      console.error("Error al enviar correo o mover el caso:", error);
-      message.error("Error al intentar enviar el correo o trasladar el caso.");
+      console.error("Error al enviar correo o actualizar el estado:", error);
+      message.error("Error al intentar enviar el correo o actualizar el estado.");
     } finally {
       setIsSending(false);
     }
   };
+  
   
 
   const tableColumns = [
