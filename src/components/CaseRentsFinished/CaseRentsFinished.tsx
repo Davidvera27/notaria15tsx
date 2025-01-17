@@ -79,14 +79,15 @@ export const CaseRentsFinished: React.FC = () => {
 
   const fetchData = async () => {
     try {
-        const response = await axios.get("http://localhost:5000/api/case-rents");
-        const filteredData = response.data.filter((caseItem: TableData) => caseItem.status === "finished");
-        setData(filteredData);
+      const response = await axios.get("http://localhost:5000/api/case-rents");
+      const filteredData = response.data.filter((caseItem: TableData) => caseItem.status === "finished");
+      setData(filteredData);
     } catch (error) {
-        console.error("Error fetching data:", error);
-        message.error("Error al cargar los datos");
+      console.error("Error fetching data:", error);
+      message.error("Error al cargar los datos");
     }
-};
+  };
+  
 
   const deleteCase = async (id: number) => {
     try {
@@ -263,7 +264,7 @@ export const CaseRentsFinished: React.FC = () => {
             ],
           }}
         >
-          <Button type="text" icon={<MoreOutlined />} />
+          <Button className="button-animate" type="text" icon={<MoreOutlined />} />
         </Dropdown>
       ),
     },
@@ -282,11 +283,11 @@ export const CaseRentsFinished: React.FC = () => {
             items={[{ title: "Inicio" }, { title: "Radicados de Rentas Finalizados" }]}
           />
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <Card title={<Title level={5}>Información de Casos Finalizados</Title>}>
+          <Card className="card-glass" title={<Title level={5}>Información de Casos Finalizados</Title>}>
               <Text>Total de casos: {data.length}</Text>
             </Card>
 
-            <Card title={<Title level={5}>Información de Boletas de Rentas Enviadas</Title>}>
+            <Card className="card-glass" title={<Title level={5}>Información de Boletas de Rentas Enviadas</Title>}>
               <Table
                 loading={loading}
                 columns={tableColumns}
@@ -297,7 +298,7 @@ export const CaseRentsFinished: React.FC = () => {
               />
             </Card>
 
-            <Card title={<Title level={5}>Configuración</Title>}>
+            <Card className="card-glass" title={<Title level={5}>Configuración</Title>}>
               <div style={{ marginBottom: "16px" }}>
                 <Text>Tamaño del formulario:</Text>
                 <Radio.Group
@@ -321,7 +322,7 @@ export const CaseRentsFinished: React.FC = () => {
                 />
               </div>
               <div style={{ marginBottom: "16px" }}>
-                <Button type="primary" onClick={() => setIsColumnConfigVisible(true)}>
+                <Button className="button-animate" type="primary" onClick={() => setIsColumnConfigVisible(true)}>
                   Configurar Columnas
                 </Button>
               </div>
@@ -417,7 +418,7 @@ export const CaseRentsFinished: React.FC = () => {
               </Form.Item>
 
               <Form.Item>
-                <Button type="primary" htmlType="submit">
+                <Button className="button-animate" type="primary" htmlType="submit">
                   Guardar Cambios
                 </Button>
               </Form.Item>
