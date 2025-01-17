@@ -82,6 +82,19 @@ body {
   transform: scale(1.05);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
+.animated-button {
+  transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+.animated-button:hover {
+  transform: translateY(-2px);
+  background-color: #34d399; /* Verde más claro */
+}
+
+.animated-button:active {
+  transform: translateY(0);
+}
+
 
 
 /*Carga con Animaciones Personalizadas*/
@@ -113,3 +126,5 @@ body {
   color: #22C55E;
   transform: translateX(5px);
 }
+
+
