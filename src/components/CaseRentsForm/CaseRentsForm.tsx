@@ -337,13 +337,11 @@ export const CaseRentsForm: React.FC = () => {
     }
   };
 
-  const loadingIcon = <LoadingOutlined style={{ fontSize: 24 }} spin />;
-
   return (
     <Spin
       spinning={isSending}
       tip="Enviando correo..."
-      indicator={loadingIcon}
+      indicator={<div className="spinner" />}
       style={{
         position: "fixed",
         top: "50%",
