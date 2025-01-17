@@ -184,30 +184,29 @@ router.delete("/case-rents/:id", (req: Request, res: Response) => {
   });
 });
 
-// SEND EMAIL AND UPDATE STATUS
-router.post("/case-rents/send-email-and-update", async (req: Request, res: Response) => {
-  const { caseId, email, subject, message } = req.body;
+// Ruta para actualizar el estado de un caso a "finished"
+// Ruta para actualizar el estado de un caso
+router.put("/api/case-rents/update-status", (req: Request, res: Response) => {
+  const { id, status } = req.body;
 
-  if (!caseId || !email || !subject || !message) {
-    return res.status(400).json({ error: "Se requieren todos los datos: caseId, email, subject y message." });
+  if (!id || !status) {
+    return res.status(400).json({ error: "Faltan datos: 'id' y 'status' son requeridos." });
   }
 
-  try {
-    // Simular el envío del correo
-    console.log(`Correo enviado a ${email}: ${subject} - ${message}`);
+  const query = `UPDATE case_rents SET status = ?, last_modified = ? WHERE id = ?`;
+  const lastModified = new Date().toISOString();
 
-    // Actualizar el estado en la base de datos
-    const query = "UPDATE case_rents SET status = 'finished' WHERE id = ?";
-    db.run(query, [caseId], function (err) {
-      if (err) {
-        return res.status(500).json({ error: "Error al actualizar el estado del caso." });
-      }
-      res.status(200).json({ message: "Correo enviado y estado actualizado correctamente." });
-    });
-  } catch (error) {
-    console.error("Error al enviar el correo o actualizar el estado:", error);
-    res.status(500).json({ error: "Error interno del servidor." });
-  }
+  db.run(query, [status, lastModified, id], function (err) {
+    if (err) {
+      return res.status(500).json({ error: "Error al actualizar el estado del caso." });
+    }
+
+    if (this.changes === 0) {
+      return res.status(404).json({ error: "Caso no encontrado." });
+    }
+
+    res.status(200).json({ success: true, message: "Estado actualizado correctamente." });
+  });
 });
 
 export default router;
