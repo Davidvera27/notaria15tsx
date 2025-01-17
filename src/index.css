@@ -1,14 +1,130 @@
 body {
   margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #F9FAFB; /* Fondo neutro */
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .input {
-  border-radius: 2px;
-  padding: 8px 12px;
+  border-radius: 4px;
+  padding: 10px;
+  border: 1px solid #34D399; /* Verde claro */
 }
 
 .main-button {
-  border-radius: 2px;
-  padding: 6.4px 15px;
-  height: 40px;
+  background-color: #D1FAE5; /* Verde muy claro */
+  color: #065F46; /* Texto verde oscuro */
+  border-radius: 4px;
+  padding: 8px 16px;
+  height: 42px;
+  border: 1px solid #34D399; /* Verde */
 }
+
+.main-button:hover {
+  background-color: #34D399; /* Verde claro vibrante */
+  color: #FFFFFF; /* Texto blanco */
+}
+
+.dropdown-item {
+  padding: 10px 15px;
+  color: #065F46; /* Verde oscuro */
+  background-color: #F0FFF4; /* Verde muy suave */
+}
+
+.dropdown-item:hover {
+  background-color: #D1FAE5; /* Verde claro */
+}
+
+.date-picker,
+.number-input {
+  border-radius: 4px;
+  padding: 8px;
+  border: 1px solid #34D399;
+}
+
+.date-picker:focus,
+.number-input:focus {
+  outline: none;
+  border-color: #10B981; /* Verde medio */
+  box-shadow: 0 0 0 3px rgba(34, 211, 153, 0.3); /* Resalte verde */
+}
+
+.ant-btn-primary {
+  font-weight: bold; /* Texto en negrita */
+  border-radius: 6px; /* Bordes redondeados */
+  padding: 10px 16px; /* Espaciado interno */
+}
+
+/*Paleta de Colores Gradientes y Estilos Vidrio (Glassmorphism) */
+
+.card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  border-radius: 8px;
+}
+
+.card-glass {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0px 4px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/*Animaciones sutiles*/
+
+.button-animate {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.button-animate:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+.animated-button {
+  transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+.animated-button:hover {
+  transform: translateY(-2px);
+  background-color: #34d399; /* Verde más claro */
+}
+
+.animated-button:active {
+  transform: translateY(0);
+}
+
+
+
+/*Carga con Animaciones Personalizadas*/
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-left-color: #22C55E;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+
+.nav-item {
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.nav-item:hover {
+  color: #22C55E;
+  transform: translateX(5px);
+}
+
+

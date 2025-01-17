@@ -5,7 +5,7 @@ const router = Router();
 
 // Tipos
 interface CaseRent {
-  id?: number; // Opcional para adaptarse a las consultas
+  id?: number;
   creation_date: string;
   document_date: string;
   escritura: string;
@@ -56,9 +56,7 @@ router.post("/case-rents", (req: Request, res: Response) => {
     [radicado],
     (err, row) => {
       if (err) {
-        return res
-          .status(500)
-          .json({ error: "Error al verificar el radicado." });
+        return res.status(500).json({ error: "Error al verificar el radicado." });
       }
       if (row) {
         return res.status(400).json({
@@ -147,91 +145,31 @@ router.put("/case-rents/:id", (req: Request, res: Response) => {
   }: Partial<CaseRent> = req.body;
   const last_modified = new Date().toISOString();
 
-  const currentQuery = "SELECT * FROM case_rents WHERE id = ?";
-  db.get<CaseRent>(currentQuery, [id], (err, currentRow) => {
-    if (err) {
-      return res.status(500).json({
-        error: "Error al obtener los datos actuales del registro.",
-      });
-    }
+  const updateQuery = `
+    UPDATE case_rents
+    SET escritura = ?, document_date = ?, radicado = ?, protocolista = ?, observaciones = ?, last_modified = ?
+    WHERE id = ?`;
 
-    if (!currentRow) {
-      return res.status(404).json({ error: "El registro no existe." });
-    }
-
-    const updatedData: CaseRent = {
-      creation_date: currentRow.creation_date,
-      document_date: document_date || currentRow.document_date,
-      escritura: escritura || currentRow.escritura,
-      radicado: radicado || currentRow.radicado,
-      protocolista: protocolista || currentRow.protocolista,
-      observaciones:
-        observaciones !== undefined ? observaciones : currentRow.observaciones,
-    };
-
-    const radicadoQuery =
-      "SELECT id, protocolista FROM case_rents WHERE radicado = ? AND id != ?";
-    db.get<Pick<CaseRent, "id" | "protocolista">>(
-      radicadoQuery,
-      [updatedData.radicado, id],
-      (err, row) => {
-        if (err) {
-          return res.status(500).json({ error: "Error al verificar el radicado." });
-        }
-        if (row) {
-          return res.status(400).json({
-            error: `El radicado ya existe en la fila ${row.id} y pertenece al protocolista ${row.protocolista}.`,
-          });
-        }
-
-        const escrituraQuery =
-          "SELECT id, protocolista FROM case_rents WHERE escritura = ? AND document_date = ? AND id != ?";
-        db.get<Pick<CaseRent, "id" | "protocolista">>(
-          escrituraQuery,
-          [updatedData.escritura, updatedData.document_date, id],
-          (err, row) => {
-            if (err) {
-              return res.status(500).json({
-                error:
-                  "Error al verificar la escritura y la fecha del documento.",
-              });
-            }
-            if (row) {
-              return res.status(400).json({
-                error: `La escritura ya existe en la fila ${row.id} y pertenece al protocolista ${row.protocolista}.`,
-              });
-            }
-
-            const updateQuery = `
-              UPDATE case_rents
-              SET escritura = ?, document_date = ?, radicado = ?, protocolista = ?, observaciones = ?, last_modified = ?
-              WHERE id = ?
-            `;
-            db.run(
-              updateQuery,
-              [
-                updatedData.escritura,
-                updatedData.document_date,
-                updatedData.radicado,
-                updatedData.protocolista,
-                updatedData.observaciones,
-                last_modified,
-                id,
-              ],
-              function (err) {
-                if (err) {
-                  return res.status(500).json({
-                    error: "Error al actualizar el registro.",
-                  });
-                }
-                res.json({ success: true, updatedRows: this.changes });
-              }
-            );
-          }
-        );
+  db.run(
+    updateQuery,
+    [
+      escritura,
+      document_date,
+      radicado,
+      protocolista,
+      observaciones,
+      last_modified,
+      id,
+    ],
+    function (err) {
+      if (err) {
+        return res.status(500).json({
+          error: "Error al actualizar el registro.",
+        });
       }
-    );
-  });
+      res.json({ success: true, updatedRows: this.changes });
+    }
+  );
 });
 
 // DELETE
@@ -246,74 +184,28 @@ router.delete("/case-rents/:id", (req: Request, res: Response) => {
   });
 });
 
-// MOVE TO FINISHED
-router.post("/move-to-finished/:id", (req: Request, res: Response) => {
-  const { id } = req.params;
+// Ruta para actualizar el estado de un caso a "finished"
+// Ruta para actualizar el estado de un caso
+router.put("/api/case-rents/update-status", (req: Request, res: Response) => {
+  const { id, status } = req.body;
 
-  const selectQuery = `
-    SELECT * FROM case_rents
-    WHERE id = ? AND status = "in_progress"`;
+  if (!id || !status) {
+    return res.status(400).json({ error: "Faltan datos: 'id' y 'status' son requeridos." });
+  }
 
-  db.get<CaseRent>(selectQuery, [id], (err, caseToMove) => {
+  const query = `UPDATE case_rents SET status = ?, last_modified = ? WHERE id = ?`;
+  const lastModified = new Date().toISOString();
+
+  db.run(query, [status, lastModified, id], function (err) {
     if (err) {
-      console.error("Error al obtener el caso:", err);
-      return res.status(500).json({ error: "Error al obtener el caso." });
+      return res.status(500).json({ error: "Error al actualizar el estado del caso." });
     }
 
-    if (!caseToMove) {
-      return res.status(404).json({
-        error: "Caso no encontrado o ya finalizado.",
-      });
+    if (this.changes === 0) {
+      return res.status(404).json({ error: "Caso no encontrado." });
     }
 
-    const insertQuery = `
-      INSERT INTO case_rents_finished (
-        id,
-        creation_date,
-        document_date,
-        escritura,
-        radicado,
-        protocolista,
-        observaciones,
-        last_modified,
-        status
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'finished')`;
-
-    db.run(
-      insertQuery,
-      [
-        caseToMove.id,
-        caseToMove.creation_date,
-        caseToMove.document_date,
-        caseToMove.escritura,
-        caseToMove.radicado,
-        caseToMove.protocolista,
-        caseToMove.observaciones,
-        new Date().toISOString(),
-      ],
-      (err) => {
-        if (err) {
-          console.error("Error al mover el caso a finalizados:", err);
-          return res.status(500).json({
-            error: "Error al mover el caso a finalizados.",
-          });
-        }
-
-        const deleteQuery = "DELETE FROM case_rents WHERE id = ?";
-        db.run(deleteQuery, [id], (err) => {
-          if (err) {
-            console.error("Error al eliminar el caso:", err);
-            return res.status(500).json({
-              error: "Error al eliminar el caso de la tabla original.",
-            });
-          }
-          res.status(200).json({
-            message: "Caso movido a finalizados con éxito.",
-          });
-        });
-      }
-    );
+    res.status(200).json({ success: true, message: "Estado actualizado correctamente." });
   });
 });
 

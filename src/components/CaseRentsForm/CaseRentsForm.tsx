@@ -24,7 +24,7 @@ import {
   Tooltip,
   Dropdown,
 } from "antd";
-import { EllipsisOutlined, LoadingOutlined } from "@ant-design/icons";
+import { MoreOutlined, LoadingOutlined, AppstoreAddOutlined } from "@ant-design/icons";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { Header } from "../Header/Header";
 import dayjs from "dayjs";
@@ -40,6 +40,7 @@ type TableData = {
   radicado: string;
   protocolista: string;
   observaciones?: string;
+  status: string; // Propiedad agregada
 };
 
 type Protocolist = {
@@ -90,16 +91,18 @@ export const CaseRentsForm: React.FC = () => {
     form.resetFields();
   };
 
+  
   const fetchData = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/case-rents");
-      console.log("Data fetched:", response.data);
-      setData(response.data);
+        const response = await axios.get("http://localhost:5000/api/case-rents");
+        const filteredData = response.data.filter((caseItem: TableData) => caseItem.status === "in_progress");
+        setData(filteredData);
     } catch (error) {
-      console.error("Error fetching data:", error);
-      message.error("Error al cargar los datos");
+        console.error("Error fetching data:", error);
+        message.error("Error al cargar los datos");
     }
-  };
+};
+
 
   const addCaseRent = async (values: TableData) => {
     try {
@@ -159,7 +162,7 @@ export const CaseRentsForm: React.FC = () => {
     setIsSending(true);
   
     try {
-      // Paso 1: Enviar correo
+      // Paso 1: Enviar el correo electrónico
       const emailResponse = await axios.post("http://localhost:5000/api/send-email", {
         to: protocolista.email,
         subject: "Notificación de Caso",
@@ -170,27 +173,28 @@ export const CaseRentsForm: React.FC = () => {
       });
   
       if (emailResponse.status === 200) {
-        // Paso 2: Mover el caso al backend
-        const moveResponse = await axios.post(`http://localhost:5000/api/case-rents/move-to-finished`, {
+        // Paso 2: Actualizar el estado del caso en la base de datos
+        const updateResponse = await axios.post("http://localhost:5000/api/case-rents/move-to-finished", {
           caseId: record.id,
         });
   
-        if (moveResponse.status === 200) {
-          message.success(`Caso trasladado exitosamente. Correo enviado a ${protocolista.email}`);
-          fetchData(); // Refrescar los datos
+        if (updateResponse.status === 200) {
+          message.success(`Caso actualizado correctamente. Correo enviado a ${protocolista.email}`);
+          fetchData(); // Actualizar la lista de casos
         } else {
-          throw new Error("No se pudo mover el caso.");
+          throw new Error("Error al actualizar el estado del caso.");
         }
       } else {
-        throw new Error("No se pudo enviar el correo.");
+        throw new Error("Error al enviar el correo.");
       }
     } catch (error) {
-      console.error("Error al enviar correo o mover el caso:", error);
-      message.error("Error al intentar enviar el correo o trasladar el caso.");
+      console.error("Error al enviar correo o actualizar el estado:", error);
+      message.error("Error al intentar enviar el correo o actualizar el estado.");
     } finally {
       setIsSending(false);
     }
   };
+  
   
 
   const tableColumns = [
@@ -280,7 +284,7 @@ export const CaseRentsForm: React.FC = () => {
             ],
           }}
         >
-          <Button type="text" icon={<EllipsisOutlined />} />
+          <Button className="button-animate" type="primary" icon={<MoreOutlined />} />
         </Dropdown>
       ),
     },
@@ -333,13 +337,11 @@ export const CaseRentsForm: React.FC = () => {
     }
   };
 
-  const loadingIcon = <LoadingOutlined style={{ fontSize: 24 }} spin />;
-
   return (
     <Spin
       spinning={isSending}
       tip="Enviando correo..."
-      indicator={loadingIcon}
+      indicator={<div className="spinner" />}
       style={{
         position: "fixed",
         top: "50%",
@@ -363,7 +365,7 @@ export const CaseRentsForm: React.FC = () => {
             />
 
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <Card title={<Title level={5}>Crear Caso</Title>}>
+            <Card className="card-glass" title={<Title level={5}>Crear Caso</Title>}>
                 <Form
                   layout="vertical"
                   size={componentSize}
@@ -444,18 +446,18 @@ export const CaseRentsForm: React.FC = () => {
                   </Row>
 
                   <Form.Item>
-                    <Button type="primary" htmlType="submit">
+                  <Button className="button-animate" type="primary" icon={<AppstoreAddOutlined />} htmlType="submit">
                       Agregar Caso
                     </Button>
                   </Form.Item>
                 </Form>
               </Card>
 
-              <Card title={<Title level={5}>Información de Radicados de Rentas</Title>}>
+              <Card className="card-glass" title={<Title level={5}>Información de Radicados de Rentas</Title>}>
                 <Table columns={tableColumns} dataSource={data} pagination={{ pageSize }} rowKey="id" />
               </Card>
 
-            <Card title={<Title level={5}>Configuración</Title>}>
+              <Card className="card-glass" title={<Title level={5}>Configuración</Title>}>
               <div style={{ marginTop: "16px" }}>
                 <Text>Tamaño del formulario:</Text>
                 <Radio.Group
@@ -487,7 +489,7 @@ export const CaseRentsForm: React.FC = () => {
                 />
               </div>
               <div style={{ marginTop: "16px" }}>
-                <Button type="primary" onClick={showColumnConfig}>
+                <Button className="button-animate" type="primary" onClick={showColumnConfig}>
                   Configurar Columnas
                 </Button>
               </div>
@@ -608,7 +610,7 @@ export const CaseRentsForm: React.FC = () => {
                   </Col>
                 </Row>
                 <Form.Item>
-                  <Button type="primary" htmlType="submit">
+                  <Button className="button-animate" type="primary" htmlType="submit">
                     Guardar Cambios
                   </Button>
                 </Form.Item>

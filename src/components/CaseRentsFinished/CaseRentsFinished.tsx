@@ -34,7 +34,7 @@ type TableData = {
   document_date: string;
   escritura: string;
   radicado: string;
-  protocolista: {
+  protocolista: number | {
     id: number;
     complete_name: string;
     last_name: string;
@@ -49,26 +49,26 @@ type Protocolist = {
   complete_name: string;
   last_name: string;
   email: string;
-  fullName?: string;
 };
 
 export const CaseRentsFinished: React.FC = () => {
   const [componentSize, setComponentSize] = useState<"small" | "middle" | "large">("middle");
   const [pageSize, setPageSize] = useState(10);
   const [data, setData] = useState<TableData[]>([]);
-  const [protocolistMap, setProtocolistMap] = useState<Record<number, Protocolist>>({});
+  const [protocolistMap, setProtocolistMap] = useState<Record<number, { fullName: string; email: string }>>({});
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
     "id",
     "creation_date",
     "document_date",
     "escritura",
     "radicado",
-    "protocolista_name",
+    "protocolista_fullName",
     "protocolista_email",
     "observaciones",
-  ]);
+  ]);  
   const [isColumnConfigVisible, setIsColumnConfigVisible] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
+  const [protocolistOptions, setProtocolistOptions] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingCase, setEditingCase] = useState<TableData | null>(null);
   const [form] = Form.useForm();
@@ -78,43 +78,20 @@ export const CaseRentsFinished: React.FC = () => {
   };
 
   const fetchData = async () => {
-    setLoading(true);
     try {
-      const response = await axios.get("http://localhost:5000/api/case-rents-finished");
-      if (Array.isArray(response.data)) {
-        setData(response.data);
-      } else {
-        console.error("Unexpected API Response Format:", response);
-        message.error("Error: Datos no tienen el formato esperado.");
-      }
+      const response = await axios.get("http://localhost:5000/api/case-rents");
+      const filteredData = response.data.filter((caseItem: TableData) => caseItem.status === "finished");
+      setData(filteredData);
     } catch (error) {
       console.error("Error fetching data:", error);
-      message.error("Error al cargar los datos.");
-    } finally {
-      setLoading(false);
+      message.error("Error al cargar los datos");
     }
   };
-
-  const fetchProtocolists = async () => {
-    try {
-      const response = await axios.get("http://localhost:5000/api/protocolist-rents");
-      const formattedMap = response.data.reduce((map: Record<number, Protocolist>, protocolist: Protocolist) => {
-        map[protocolist.id] = {
-          ...protocolist,
-          fullName: `${protocolist.complete_name} ${protocolist.last_name}`,
-        };
-        return map;
-      }, {});
-      setProtocolistMap(formattedMap);
-    } catch (error) {
-      console.error("Error fetching protocolists:", error);
-      message.error("Error al cargar los datos de protocolistas.");
-    }
-  };
+  
 
   const deleteCase = async (id: number) => {
     try {
-      await axios.delete(`http://localhost:5000/api/case-rents-finished/${id}`);
+      await axios.delete(`http://localhost:5000/api/case-rents/${id}`);
       message.success("Caso eliminado correctamente.");
       fetchData();
     } catch (error) {
@@ -126,18 +103,24 @@ export const CaseRentsFinished: React.FC = () => {
   const openEditModal = (record: TableData) => {
     setEditingCase(record);
     setIsModalVisible(true);
+
     form.setFieldsValue({
       ...record,
       creation_date: dayjs(record.creation_date),
       document_date: dayjs(record.document_date),
-      protocolista: record.protocolista.id,
+      protocolista: typeof record.protocolista === "object" ? record.protocolista.id : record.protocolista,
     });
   };
 
   const updateCase = async (values: Partial<TableData>) => {
     if (!editingCase) return;
     try {
-      await axios.put(`http://localhost:5000/api/case-rents-finished/${editingCase.id}`, values);
+      const updatedValues = {
+        ...values,
+        creation_date: dayjs(values.creation_date).format("YYYY-MM-DD"),
+        document_date: dayjs(values.document_date).format("YYYY-MM-DD"),
+      };
+      await axios.put(`http://localhost:5000/api/case-rents/${editingCase.id}`, updatedValues);
       message.success("Caso actualizado correctamente.");
       fetchData();
       setIsModalVisible(false);
@@ -148,82 +131,114 @@ export const CaseRentsFinished: React.FC = () => {
   };
 
   const sendEmail = async (record: TableData) => {
-    const protocolista = protocolistMap[record.protocolista.id];
+    const protocolistaId = typeof record.protocolista === "object" ? record.protocolista.id : record.protocolista;
+    const protocolista = protocolistMap[protocolistaId];
     if (!protocolista || !protocolista.email) {
       return message.error("El correo del protocolista no fue encontrado.");
     }
     try {
-      await axios.post("http://localhost:5000/api/case-rents-finished/send-email", {
+      await axios.post("http://localhost:5000/api/case-rents/send-email", {
         id: record.id,
       });
       message.success(`Correo enviado a ${protocolista.email}`);
     } catch (error) {
-      console.error("Error al enviar correo:", error);
-      message.error("No se pudo enviar el correo.");
+      console.error("Error al reenviar correo:", error);
+      message.error("No se pudo reenviar el correo.");
     }
   };
 
   useEffect(() => {
     fetchData();
+    const fetchProtocolists = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/protocolist-rents");
+        const formattedOptions = response.data.map((protocolist: Protocolist) => ({
+          value: protocolist.id,
+          label: `${protocolist.complete_name} ${protocolist.last_name}`,
+        }));
+        const protocolistMap = response.data.reduce((map: Record<number, { fullName: string; email: string }>, protocolist: Protocolist) => {
+          map[protocolist.id] = {
+            fullName: `${protocolist.complete_name} ${protocolist.last_name}`,
+            email: protocolist.email,
+          };
+          return map;
+        }, {});
+        setProtocolistOptions(formattedOptions);
+        setProtocolistMap(protocolistMap);
+      } catch (error) {
+        console.error("Error fetching protocolists:", error);
+        message.error("Error al cargar los protocolistas");
+      }
+    };
+
     fetchProtocolists();
   }, []);
 
-  const tableColumns = [
-    {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      visible: visibleColumns.includes("id"),
-    },
-    {
-      title: "Fecha de creación",
-      dataIndex: "creation_date",
-      key: "creation_date",
-      sorter: (a: TableData, b: TableData) => a.creation_date.localeCompare(b.creation_date),
-      visible: visibleColumns.includes("creation_date"),
-    },
-    {
-      title: "Fecha del documento",
-      dataIndex: "document_date",
-      key: "document_date",
-      visible: visibleColumns.includes("document_date"),
-    },
-    {
-      title: "Escritura",
-      dataIndex: "escritura",
-      key: "escritura",
-      visible: visibleColumns.includes("escritura"),
-    },
-    {
-      title: "Radicado",
-      dataIndex: "radicado",
-      key: "radicado",
-      visible: visibleColumns.includes("radicado"),
-    },
-    {
-      title: "Nombre del Protocolista",
-      key: "protocolista_name",
-      render: (_: unknown, record: TableData) =>
-        protocolistMap[record.protocolista.id]?.fullName || "Desconocido",
-      visible: visibleColumns.includes("protocolista_name"),
-    },
-    {
-      title: "Correo del Protocolista",
-      key: "protocolista_email",
-      render: (_: unknown, record: TableData) =>
-        protocolistMap[record.protocolista.id]?.email || "Desconocido",
-      visible: visibleColumns.includes("protocolista_email"),
-    },
-    {
-      title: "Observaciones",
-      dataIndex: "observaciones",
-      key: "observaciones",
-      render: (text: string) => <Tooltip title={text}>{text || "Sin observaciones"}</Tooltip>,
-      visible: visibleColumns.includes("observaciones"),
-    },
+    const tableColumns = [
+      {
+        title: "ID",
+        dataIndex: "id",
+        key: "id",
+        visible: visibleColumns.includes("id"),
+      },
+      {
+        title: "Fecha de creación",
+        dataIndex: "creation_date",
+        key: "creation_date",
+        sorter: (a: TableData, b: TableData) => a.creation_date.localeCompare(b.creation_date),
+        visible: visibleColumns.includes("creation_date"),
+      },
+      {
+        title: "Fecha del documento",
+        dataIndex: "document_date",
+        key: "document_date",
+        visible: visibleColumns.includes("document_date"),
+      },
+      {
+        title: "Escritura",
+        dataIndex: "escritura",
+        key: "escritura",
+        visible: visibleColumns.includes("escritura"),
+      },
+      {
+        title: "Radicado",
+        dataIndex: "radicado",
+        key: "radicado",
+        visible: visibleColumns.includes("radicado"),
+      },
+      {
+        title: "Nombre del Protocolista",
+        key: "protocolista_fullName",
+        visible: visibleColumns.includes("protocolista_fullName"),
+        render: (_: unknown, record: TableData) => {
+          const protocolistaId =
+            typeof record.protocolista === "object" ? record.protocolista.id : record.protocolista;
+          return protocolistMap[protocolistaId]?.fullName || "Desconocido";
+        },
+      },
+      {
+        title: "Correo del Protocolista",
+        key: "protocolista_email",
+        visible: visibleColumns.includes("protocolista_email"),
+        render: (_: unknown, record: TableData) => {
+          const protocolistaId =
+            typeof record.protocolista === "object" ? record.protocolista.id : record.protocolista;
+          return protocolistMap[protocolistaId]?.email || "Desconocido";
+        },
+      },
+      {
+        title: "Observaciones",
+        dataIndex: "observaciones",
+        key: "observaciones",
+        render: (text: string) => <Tooltip title={text}>{text || "Sin observaciones"}</Tooltip>,
+        visible: visibleColumns.includes("observaciones"),
+      },
     {
       title: "Acciones",
       key: "acciones",
+      fixed: "right" as const,
+      width: 100,
+      visible: true,
       render: (_: unknown, record: TableData) => (
         <Dropdown
           menu={{
@@ -241,7 +256,7 @@ export const CaseRentsFinished: React.FC = () => {
                 onClick: () => deleteCase(record.id),
               },
               {
-                label: "Enviar correo",
+                label: "reenviar correo",
                 key: "send-email",
                 icon: <MailOutlined />,
                 onClick: () => sendEmail(record),
@@ -249,11 +264,12 @@ export const CaseRentsFinished: React.FC = () => {
             ],
           }}
         >
-          <Button type="text" icon={<MoreOutlined />} />
+          <Button className="button-animate" type="text" icon={<MoreOutlined />} />
         </Dropdown>
       ),
     },
-  ].filter((col) => col.visible);
+    
+ ].filter((col) => col.visible);
 
   return (
     <Layout>
@@ -267,11 +283,11 @@ export const CaseRentsFinished: React.FC = () => {
             items={[{ title: "Inicio" }, { title: "Radicados de Rentas Finalizados" }]}
           />
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <Card title={<Title level={5}>Información de Casos Finalizados</Title>}>
+          <Card className="card-glass" title={<Title level={5}>Información de Casos Finalizados</Title>}>
               <Text>Total de casos: {data.length}</Text>
             </Card>
 
-            <Card title={<Title level={5}>Información de Boletas de Rentas Enviadas</Title>}>
+            <Card className="card-glass" title={<Title level={5}>Información de Boletas de Rentas Enviadas</Title>}>
               <Table
                 loading={loading}
                 columns={tableColumns}
@@ -282,7 +298,7 @@ export const CaseRentsFinished: React.FC = () => {
               />
             </Card>
 
-            <Card title={<Title level={5}>Configuración</Title>}>
+            <Card className="card-glass" title={<Title level={5}>Configuración</Title>}>
               <div style={{ marginBottom: "16px" }}>
                 <Text>Tamaño del formulario:</Text>
                 <Radio.Group
@@ -306,7 +322,7 @@ export const CaseRentsFinished: React.FC = () => {
                 />
               </div>
               <div style={{ marginBottom: "16px" }}>
-                <Button type="primary" onClick={() => setIsColumnConfigVisible(true)}>
+                <Button className="button-animate" type="primary" onClick={() => setIsColumnConfigVisible(true)}>
                   Configurar Columnas
                 </Button>
               </div>
@@ -326,7 +342,7 @@ export const CaseRentsFinished: React.FC = () => {
                 "document_date",
                 "escritura",
                 "radicado",
-                "protocolista_name",
+                "protocolista_fullName",
                 "protocolista_email",
                 "observaciones",
               ]}
@@ -394,12 +410,7 @@ export const CaseRentsFinished: React.FC = () => {
                 name="protocolista"
                 rules={[{ required: true, message: "Seleccione un protocolista" }]}
               >
-                <Select
-                  options={Object.values(protocolistMap).map((protocolist) => ({
-                    value: protocolist.id,
-                    label: protocolist.fullName,
-                  }))}
-                />
+                <Select placeholder="Seleccione un protocolista" options={protocolistOptions} />
               </Form.Item>
 
               <Form.Item label="Observaciones" name="observaciones">
@@ -407,7 +418,7 @@ export const CaseRentsFinished: React.FC = () => {
               </Form.Item>
 
               <Form.Item>
-                <Button type="primary" htmlType="submit">
+                <Button className="button-animate" type="primary" htmlType="submit">
                   Guardar Cambios
                 </Button>
               </Form.Item>

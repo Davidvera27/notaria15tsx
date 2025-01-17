@@ -7,36 +7,39 @@ import { CaseRentsForm } from "./components/CaseRentsForm/CaseRentsForm";
 import { Protocolist } from "./components/Protocolist/Protocolist";
 import { CaseRentsFinished } from "./components/CaseRentsFinished/CaseRentsFinished";
 
-
-
 export const App = () => {
   return (
     <ConfigProvider
       theme={{
+        token: {
+          colorPrimary: "#16A34A", // Verde muy claro como color base
+          colorPrimaryHover: "#16A34A", // Verde claro al hacer hover
+        },
         components: {
           Layout: {
-            headerBg: "#22075E",
-            triggerBg: "#fff",
-            triggerColor: "#000",
+            headerBg: "#14532D",
+            triggerBg: "#D1FAE5",
+            triggerColor: "#065F46",
           },
           Tabs: {
-            inkBarColor: "#9957C2",
-            itemActiveColor: "#9957C2",
-            itemSelectedColor: "#9957C2",
-            itemHoverColor: "#9957C2",
+            inkBarColor: "#34D399",
+            itemActiveColor: "#34D399",
+            itemSelectedColor: "#10B981",
+            itemHoverColor: "#059669",
           },
           Input: {
-            activeBorderColor: "#9957C2",
-            hoverBorderColor: "#9957C2",
+            borderRadius: 4,
+            colorBgContainer: "#FFFFFF",
+            colorBgTextHover: "#D1FAE5", // Propiedad válida para el hover
           },
           Button: {
-            defaultActiveBg: "#9957C2",
-            defaultActiveColor: "#fff",
-            defaultBg: "#9957C2",
-            defaultColor: "#fff",
-            defaultHoverBg: "#9957C2",
-            defaultHoverBorderColor: "#9957C2",
-            defaultHoverColor: "#FFF",
+            borderRadius: 4, // Define el radio del botón
+            colorPrimaryBg: "#16A34A", // Color de fondo del botón
+            colorPrimaryHover: "#34D399", // Color de fondo al hacer hover
+          },
+          Dropdown: {
+            colorBgContainer: "#F0FFF4", // Fondo del dropdown
+            colorBgTextHover: "#D1FAE5", // Fondo al hacer hover
           },
         },
       }}
