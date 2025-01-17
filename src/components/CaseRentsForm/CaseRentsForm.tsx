@@ -24,7 +24,7 @@ import {
   Tooltip,
   Dropdown,
 } from "antd";
-import { EllipsisOutlined, LoadingOutlined } from "@ant-design/icons";
+import { MoreOutlined, LoadingOutlined, AppstoreAddOutlined } from "@ant-design/icons";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { Header } from "../Header/Header";
 import dayjs from "dayjs";
@@ -284,7 +284,7 @@ export const CaseRentsForm: React.FC = () => {
             ],
           }}
         >
-          <Button className="button-animate" type="text" icon={<EllipsisOutlined />} />
+          <Button className="button-animate" type="primary" icon={<MoreOutlined />} />
         </Dropdown>
       ),
     },
@@ -446,7 +446,7 @@ export const CaseRentsForm: React.FC = () => {
                   </Row>
 
                   <Form.Item>
-                  <Button className="button-animate" type="primary" htmlType="submit">
+                  <Button className="button-animate" type="primary" icon={<AppstoreAddOutlined />} htmlType="submit">
                       Agregar Caso
                     </Button>
                   </Form.Item>
