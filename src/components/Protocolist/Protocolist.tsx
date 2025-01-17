@@ -174,7 +174,7 @@ export const Protocolist: React.FC = () => {
             <Breadcrumb.Item>Protocolistas</Breadcrumb.Item>
           </Breadcrumb>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <Card title={<Title level={5}>Crear nuevo protocolista</Title>}>
+          <Card className="card-glass" title={<Title level={5}>Crear nuevo protocolista</Title>}>
             <Form form={form} layout="vertical" onFinish={handleSubmit}>
               <Row gutter={16}>
                 <Col span={12}>
@@ -223,7 +223,7 @@ export const Protocolist: React.FC = () => {
             </Form>
           </Card>
 
-            <Card title={<Title level={5}>Protocolistas</Title>}>
+          <Card className="card-glass" title={<Title level={5}>Protocolistas</Title>}>
               <Table
                 columns={tableColumns}
                 dataSource={tableData}
