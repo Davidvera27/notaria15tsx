@@ -284,7 +284,7 @@ export const CaseRentsForm: React.FC = () => {
             ],
           }}
         >
-          <Button type="text" icon={<EllipsisOutlined />} />
+          <Button className="button-animate" type="text" icon={<EllipsisOutlined />} />
         </Dropdown>
       ),
     },
@@ -367,7 +367,7 @@ export const CaseRentsForm: React.FC = () => {
             />
 
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <Card title={<Title level={5}>Crear Caso</Title>}>
+            <Card className="card-glass" title={<Title level={5}>Crear Caso</Title>}>
                 <Form
                   layout="vertical"
                   size={componentSize}
@@ -448,18 +448,18 @@ export const CaseRentsForm: React.FC = () => {
                   </Row>
 
                   <Form.Item>
-                    <Button type="primary" htmlType="submit">
+                  <Button className="button-animate" type="primary" htmlType="submit">
                       Agregar Caso
                     </Button>
                   </Form.Item>
                 </Form>
               </Card>
 
-              <Card title={<Title level={5}>Información de Radicados de Rentas</Title>}>
+              <Card className="card-glass" title={<Title level={5}>Información de Radicados de Rentas</Title>}>
                 <Table columns={tableColumns} dataSource={data} pagination={{ pageSize }} rowKey="id" />
               </Card>
 
-            <Card title={<Title level={5}>Configuración</Title>}>
+              <Card className="card-glass" title={<Title level={5}>Configuración</Title>}>
               <div style={{ marginTop: "16px" }}>
                 <Text>Tamaño del formulario:</Text>
                 <Radio.Group
@@ -491,7 +491,7 @@ export const CaseRentsForm: React.FC = () => {
                 />
               </div>
               <div style={{ marginTop: "16px" }}>
-                <Button type="primary" onClick={showColumnConfig}>
+                <Button className="button-animate" type="primary" onClick={showColumnConfig}>
                   Configurar Columnas
                 </Button>
               </div>
@@ -612,7 +612,7 @@ export const CaseRentsForm: React.FC = () => {
                   </Col>
                 </Row>
                 <Form.Item>
-                  <Button type="primary" htmlType="submit">
+                  <Button className="button-animate" type="primary" htmlType="submit">
                     Guardar Cambios
                   </Button>
                 </Form.Item>
