@@ -48,12 +48,13 @@ export const Header = () => {
             type="text"
             shape="circle"
             icon={
-              <Badge count={11}>
-                <BellOutlined style={{ color: "#fff" }} />
+              <Badge count={1}>
+                <BellOutlined style={{ animation: "rotate 2s linear infinite" }} />
               </Badge>
             }
           />
         </Tooltip>
+
         <Flex gap="small" style={{ alignItems: "center" }}>
           <Avatar icon={<UserOutlined />} />
           <Typography.Paragraph style={{ color: "#fff", margin: 0 }}>
