@@ -157,7 +157,7 @@ router.delete("/case-rents/:id", (req: Request, res: Response) => {
 });
 
 // Ruta para actualizar el estado de un caso a "finished"
-router.post("/api/case-rents/move-to-finished", async (req: Request, res: Response) => {
+router.post("/case-rents/move-to-finished", async (req: Request, res: Response) => {
   const { caseId } = req.body;
 
   if (!caseId) {
