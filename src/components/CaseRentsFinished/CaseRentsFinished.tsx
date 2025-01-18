@@ -67,7 +67,7 @@ export const CaseRentsFinished: React.FC = () => {
     "observaciones",
   ]);  
   const [isColumnConfigVisible, setIsColumnConfigVisible] = useState(false);
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [protocolistOptions, setProtocolistOptions] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingCase, setEditingCase] = useState<TableData | null>(null);
@@ -133,19 +133,37 @@ export const CaseRentsFinished: React.FC = () => {
   const sendEmail = async (record: TableData) => {
     const protocolistaId = typeof record.protocolista === "object" ? record.protocolista.id : record.protocolista;
     const protocolista = protocolistMap[protocolistaId];
+  
     if (!protocolista || !protocolista.email) {
-      return message.error("El correo del protocolista no fue encontrado.");
+      return message.error("El correo del protocolista no fue encontrado. Verifique los datos.");
     }
+  
+    setLoading(true);
+  
     try {
-      await axios.post("http://localhost:5000/api/case-rents/send-email", {
-        id: record.id,
+      // Enviar el correo electrónico
+      const emailResponse = await axios.post("http://localhost:5000/api/send-email", {
+        to: protocolista.email,
+        subject: "Notificación de Caso Finalizado",
+        text: `Estimado(a) ${protocolista.fullName}, se le informa que su caso finalizado tiene los siguientes detalles:
+               - Número de escritura: ${record.escritura}
+               - Número de radicado: ${record.radicado}
+               - Fecha del documento: ${record.document_date}`,
       });
-      message.success(`Correo enviado a ${protocolista.email}`);
+  
+      if (emailResponse.status === 200) {
+        message.success(`Correo reenviado a ${protocolista.email}`);
+      } else {
+        throw new Error("Error al enviar el correo.");
+      }
     } catch (error) {
-      console.error("Error al reenviar correo:", error);
-      message.error("No se pudo reenviar el correo.");
+      console.error("Error al enviar correo:", error);
+      message.error("No se pudo enviar el correo.");
+    } finally {
+      setLoading(false);
     }
   };
+  
 
   useEffect(() => {
     fetchData();
@@ -256,11 +274,11 @@ export const CaseRentsFinished: React.FC = () => {
                 onClick: () => deleteCase(record.id),
               },
               {
-                label: "reenviar correo",
+                label: "Reenviar correo",
                 key: "send-email",
                 icon: <MailOutlined />,
-                onClick: () => sendEmail(record),
-              },
+                onClick: () => sendEmail(record), // Llama al nuevo método `sendEmail`
+              },              
             ],
           }}
         >
