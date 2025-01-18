@@ -162,7 +162,7 @@ export const CaseRentsForm: React.FC = () => {
     setIsSending(true);
   
     try {
-      // Paso 1: Enviar el correo electrónico
+      // Enviar el correo electrónico
       const emailResponse = await axios.post("http://localhost:5000/api/send-email", {
         to: protocolista.email,
         subject: "Notificación de Caso",
@@ -173,17 +173,18 @@ export const CaseRentsForm: React.FC = () => {
       });
   
       if (emailResponse.status === 200) {
-        // Paso 2: Actualizar el estado del caso en la base de datos
+        // Actualizar el estado del caso
         const updateResponse = await axios.post("http://localhost:5000/api/case-rents/move-to-finished", {
           caseId: record.id,
         });
   
-        if (updateResponse.status === 200) {
-          message.success(`Caso actualizado correctamente. Correo enviado a ${protocolista.email}`);
-          fetchData(); // Actualizar la lista de casos
+        if (updateResponse.status === 200 && updateResponse.data.success) {
+          message.success(`Caso actualizado correctamente.`);
+          fetchData();
         } else {
-          throw new Error("Error al actualizar el estado del caso.");
+          message.error("El caso no pudo ser actualizado.");
         }
+        
       } else {
         throw new Error("Error al enviar el correo.");
       }
@@ -195,8 +196,6 @@ export const CaseRentsForm: React.FC = () => {
     }
   };
   
-  
-
   const tableColumns = [
     {
       title: "No.",
