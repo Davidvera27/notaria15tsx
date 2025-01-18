@@ -18,7 +18,6 @@ interface Case {
   status: string;
 }
 
-
 // Validar si el radicado o escritura ya existen
 const validateDuplicates = async (
   radicado: string,
