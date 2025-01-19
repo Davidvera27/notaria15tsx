@@ -24,7 +24,7 @@ import {
   Tooltip,
   Dropdown,
 } from "antd";
-import { MoreOutlined, LoadingOutlined, AppstoreAddOutlined } from "@ant-design/icons";
+import { MoreOutlined, MailOutlined, EditOutlined, DeleteOutlined, LoadingOutlined, AppstoreAddOutlined } from "@ant-design/icons";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { Header } from "../Header/Header";
 import dayjs from "dayjs";
@@ -265,14 +265,25 @@ export const CaseRentsForm: React.FC = () => {
         <Dropdown
           menu={{
             items: [
-              { label: "Editar", key: "edit", onClick: () => openEditModal(record) },
-              { label: "Eliminar", key: "delete", onClick: () => deleteCaseRent(record.id) },
+              {
+                label: "Editar",
+                key: "edit",
+                icon: <EditOutlined />,
+                onClick: () => openEditModal(record),
+              },
+              {
+                label: "Eliminar",
+                key: "delete",
+                icon: <DeleteOutlined />,
+                onClick: () => deleteCaseRent(record.id),
+              },
               {
                 label: (
                   <>
                     {isSending ? (
                       <LoadingOutlined style={{ marginRight: 8 }} />
                     ) : null}
+                     <MailOutlined />,
                     Enviar correo
                   </>
                 ),
