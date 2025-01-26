@@ -5,6 +5,9 @@ import caseRentsRoutes from './routes/caseRentsRoutes';
 import protocolistRentsRoutes from './routes/protocolistRentsRoutes';
 import emailRoutes from './routes/emailRoutes';
 import caseRentsFinishedRoutes from "./routes/caseRentsFinishedRoutes";
+import pdfRoutes from "./routes/pdfRoutes";
+
+
 
 
 const app = express();
@@ -21,6 +24,7 @@ app.use('/api', caseRentsRoutes);
 app.use('/api', protocolistRentsRoutes);
 app.use('/api', emailRoutes);
 app.use("/api", caseRentsFinishedRoutes);
+app.use("/api/pdf", pdfRoutes);
 
 // Servidor
 app.listen(PORT, () => {
