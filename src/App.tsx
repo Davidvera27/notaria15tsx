@@ -6,6 +6,7 @@ import { Login } from "./components/Login/Login";
 import { CaseRentsForm } from "./components/CaseRentsForm/CaseRentsForm";
 import { Protocolist } from "./components/Protocolist/Protocolist";
 import { CaseRentsFinished } from "./components/CaseRentsFinished/CaseRentsFinished";
+import { Registration } from "./components/accounting/Registration/Registration";
 
 export const App = () => {
   return (
@@ -51,6 +52,7 @@ export const App = () => {
           <Route path="/CaseRentsForm" element={<CaseRentsForm />} />
           <Route path="/Protocolist" element={<Protocolist />} />
           <Route path="/CaseRentsFinished" element={<CaseRentsFinished />} />
+          <Route path="/Registration" element={<Registration />} />
         </Routes>
       </Router>
     </ConfigProvider>
