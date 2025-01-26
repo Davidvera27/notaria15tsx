@@ -5,21 +5,36 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/app.js",
-    "dev": "ts-node-dev --respawn src/app.ts"
+    "dev": "concurrently \"npm run dev:ts\" \"npm run dev:py\"",
+    "dev:ts": "ts-node-dev --respawn src/app.ts",
+    "dev:py": "python ./src/python/file_monitor.py"
   },
   "dependencies": {
     "@tanstack/query-core": "^5.0.0",
     "body-parser": "^1.20.3",
     "cors": "^2.8.5",
     "express": "^4.21.2",
+    "imap": "^0.8.19",
+    "imap-simple": "^5.1.0",
+    "mailparser": "^3.7.2",
+    "multer": "^1.4.5-lts.1",
+    "node-imap": "^0.9.6",
     "nodemailer": "^6.9.16",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^1.1.1",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.17",
+    "@types/imap": "^0.8.42",
+    "@types/imap-simple": "^4.2.9",
+    "@types/mailparser": "^3.4.5",
+    "@types/multer": "^1.4.12",
     "@types/node": "^18.15.11",
     "@types/nodemailer": "^6.4.17",
+    "@types/pdf-parse": "^1.1.4",
+    "concurrently": "^7.6.0",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.0.4"
