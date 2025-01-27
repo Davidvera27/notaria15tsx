@@ -1,47 +1,44 @@
 from flask import Flask, request, jsonify
 import fitz  # PyMuPDF para leer PDFs
 import os
+import re
+
+# Ruta absoluta de la carpeta "uploads"
+UPLOAD_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "uploads"))
+
+# Validar que la carpeta "uploads" exista
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+    print(f"Carpeta asegurada en: {UPLOAD_FOLDER}")
 
 app = Flask(__name__)
 
 @app.route("/process-pdf", methods=["POST"])
 def process_pdf():
-    if "file" not in request.files:
-        return jsonify({"error": "No se envió un archivo PDF"}), 400
+    file_path = request.json.get("file_path")
 
-    file = request.files["file"]
-    pdf_path = f"./backend/uploads/{file.filename}"
-    file.save(pdf_path)
+    if not file_path or not file_path.endswith(".pdf"):
+        return jsonify({"error": "Ruta de archivo no válida o archivo no es PDF"}), 400
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "Archivo no encontrado"}), 404
 
     try:
-        with fitz.open(pdf_path) as pdf:
-            print(f"Procesando el archivo: {pdf_path}")
+        with fitz.open(file_path) as pdf:
+            print(f"Procesando el archivo: {file_path}")
             extracted_data = extract_data_from_pdf(pdf)
             print(f"Datos extraídos: {extracted_data}")
             return jsonify({"data": extracted_data}), 200
     except Exception as e:
-        print(f"Error procesando el archivo {pdf_path}: {e}")
+        print(f"Error procesando el archivo {file_path}: {e}")
         return jsonify({"error": str(e)}), 500
 
-    if "file" not in request.files:
-        return jsonify({"error": "No se envió un archivo PDF"}), 400
-
-    file = request.files["file"]
-    pdf_path = f"./backend/uploads/{file.filename}"
-    file.save(pdf_path)
-
-    try:
-        with fitz.open(pdf_path) as pdf:
-            extracted_data = extract_data_from_pdf(pdf)
-            return jsonify({"data": extracted_data}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 def extract_data_from_pdf(pdf):
     text = ""
     for page in pdf:
         try:
-            text += page.get_text("text")  # Intenta obtener texto en formato plano
+            text += page.get_text("text")
         except Exception as e:
             print(f"Error leyendo una página del PDF: {e}")
             continue
@@ -49,7 +46,6 @@ def extract_data_from_pdf(pdf):
     if not text.strip():
         raise ValueError("No se pudo extraer texto del PDF")
 
-    # Extraer campos con patrones definidos
     return {
         "RADICADO": extract_value(text, "RADICADO N°"),
         "N_DOC": extract_value(text, "N° DOC"),
@@ -68,13 +64,11 @@ def extract_data_from_pdf(pdf):
 
 
 def extract_value(text, label):
-    # Busca después de la etiqueta y antes del salto de línea
+    # Busca el valor asociado al label usando expresiones regulares
     pattern = rf"{label}[:\s]*(.*?)(?:\s{2,}|\n)"
     match = re.search(pattern, text, re.IGNORECASE)
     return match.group(1).strip() if match else "No encontrado"
-    start += len(label)
-    end = text.find("\n", start)
-    return text[start:end].strip()
+
 
 if __name__ == "__main__":
     app.run(port=5001)
