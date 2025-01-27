@@ -52,6 +52,15 @@ def extract_field(text, field_name):
     return match.group(1).strip() if match else "No encontrado"
 
 
+def extract_n_doc(text):
+    """
+    Extrae específicamente el número del documento (N° DOC).
+    """
+    pattern = r"N[°º]\s*DOC[:\s]*(\d+)"  # Patrón para capturar el número del documento
+    match = re.search(pattern, text, re.IGNORECASE)
+    return match.group(1).strip() if match else "No encontrado"
+
+
 def extract_fecha_limite(text):
     """
     Extrae específicamente la fecha límite del registro (formato: dd.mm.yyyy).
@@ -72,7 +81,7 @@ def extract_pdf_data(pdf_path):
 
     return {
         "RADICADO": extract_field(text, "RADICADO N°"),
-        "N_DOC": extract_field(text, "N° DOC"),
+        "N_DOC": extract_n_doc(text),  # Llamada específica para extraer N° DOC
         "FECHA_LIMITE": extract_fecha_limite(text),
         "TOTAL_PAGAR": extract_field(text, "TOTAL A PAGAR"),
         "LUGAR_EXPEDICION": extract_field(text, "LUGAR DE EXPEDICIÓN"),
