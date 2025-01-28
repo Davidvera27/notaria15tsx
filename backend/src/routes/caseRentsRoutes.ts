@@ -119,6 +119,21 @@ router.get("/case-rents", (_req: Request, res: Response) => {
   });
 });
 
+//endpoint para devolver la lista de casos actualizada.
+
+router.get("/api/case-rents-with-pdf", async (req, res) => {
+  try {
+    const cases = await db.all(
+      "SELECT * FROM case_rents WHERE status = 'in_progress'"
+    );
+    res.json(cases);
+  } catch (error) {
+    console.error("Error fetching cases:", error);
+    res.status(500).json({ error: "Error fetching cases" });
+  }
+});
+
+
 // UPDATE: Actualizar un caso por ID
 router.put("/case-rents/:id", (req: Request, res: Response) => {
   const { id } = req.params;
