@@ -41,6 +41,7 @@ type TableData = {
   protocolista: string;
   observaciones?: string;
   status: string; // Propiedad agregada
+  pdf_outlook: number;
 };
 
 type Protocolist = {
@@ -92,16 +93,16 @@ export const CaseRentsForm: React.FC = () => {
   };
 
   
-  const fetchData = async () => {
-    try {
-        const response = await axios.get("http://localhost:5000/api/case-rents");
-        const filteredData = response.data.filter((caseItem: TableData) => caseItem.status === "in_progress");
-        setData(filteredData);
-    } catch (error) {
-        console.error("Error fetching data:", error);
-        message.error("Error al cargar los datos");
-    }
-};
+    const fetchData = async () => {
+      try {
+          const response = await axios.get("http://localhost:5000/api/case-rents");
+          const filteredData = response.data.filter((caseItem: TableData) => caseItem.status === "in_progress");
+          setData(filteredData);
+      } catch (error) {
+          console.error("Error fetching data:", error);
+          message.error("Error al cargar los datos");
+      }
+  };
 
 
   const addCaseRent = async (values: TableData) => {
@@ -283,7 +284,7 @@ export const CaseRentsForm: React.FC = () => {
                     {isSending ? (
                       <LoadingOutlined style={{ marginRight: 8 }} />
                     ) : null}
-                     <MailOutlined />,
+                    <MailOutlined />,
                     Enviar correo
                   </>
                 ),
@@ -294,11 +295,19 @@ export const CaseRentsForm: React.FC = () => {
             ],
           }}
         >
-          <Button className="button-animate" type="primary" icon={<MoreOutlined />} />
+          <Button
+            className="button-animate"
+            type="primary"
+            icon={<MoreOutlined />}
+          />
         </Dropdown>
       ),
     },
   ].filter((col) => col.visible);
+
+  const rowClassName = (record: TableData) => {
+    return record.pdf_outlook === 1 ? "highlight-row" : ""; // Agrega la clase condicional
+  };
 
   useEffect(() => {
     fetchData();
@@ -464,7 +473,13 @@ export const CaseRentsForm: React.FC = () => {
               </Card>
 
               <Card className="card-glass" title={<Title level={5}>Información de Radicados de Rentas</Title>}>
-                <Table columns={tableColumns} dataSource={data} pagination={{ pageSize }} rowKey="id" />
+              <Table
+                      columns={tableColumns}
+                      dataSource={data}
+                      pagination={{ pageSize }}
+                      rowKey="id"
+                      rowClassName={rowClassName} // Resalta filas si tienen PDF
+                    />
               </Card>
 
               <Card className="card-glass" title={<Title level={5}>Configuración</Title>}>
