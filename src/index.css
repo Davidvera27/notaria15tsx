@@ -127,4 +127,7 @@ body {
   transform: translateX(5px);
 }
 
+.highlight-row {
+  background-color: rgba(34, 211, 153, 0.2); /* Fondo verde claro */
+}
 
