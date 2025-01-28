@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import fitz  # PyMuPDF para leer PDFs
 import os
 import re
+import sqlite3
 
 # Ruta absoluta de la carpeta "uploads"
 UPLOAD_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "uploads"))
@@ -14,10 +15,17 @@ if not os.path.exists(UPLOAD_FOLDER):
 # Lista para controlar archivos procesados
 processed_files = set()
 
+# Ruta de la base de datos SQLite
+DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../database/notaria15tsx.db"))
+
 app = Flask(__name__)
 
 @app.route("/process-pdf", methods=["POST"])
 def process_pdf():
+    """
+    Procesa un archivo PDF, extrae los datos y actualiza el estado en la base de datos
+    si el radicado existe y está en progreso.
+    """
     # Obtener la ruta del archivo enviada en la solicitud
     data = request.get_json()
     file_path = data.get("file_path")
@@ -35,7 +43,29 @@ def process_pdf():
     try:
         # Procesar y extraer los datos del PDF
         extracted_data = extract_pdf_data(file_path)
-        processed_files.add(file_path)  # Agregar a la lista de archivos procesados
+        radicado = extracted_data.get("RADICADO")
+
+        # Conectar a la base de datos SQLite
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        # Verificar si el radicado existe y está en progreso
+        cursor.execute("SELECT id, status FROM case_rents WHERE radicado = ?", (radicado,))
+        result = cursor.fetchone()
+
+        if not result:
+            return jsonify({"error": "Radicado no encontrado en la base de datos"}), 404
+
+        case_id, status = result
+        if status != "in_progress":
+            return jsonify({"error": "El radicado no está en progreso"}), 400
+
+        # Actualizar la columna 'pdf_outlook' para indicar que tiene un PDF asociado
+        cursor.execute("UPDATE case_rents SET pdf_outlook = 1 WHERE id = ?", (case_id,))
+        conn.commit()
+        conn.close()
+
+        processed_files.add(file_path)  # Marcar el archivo como procesado
         print(f"Datos extraídos: {extracted_data}")
         return jsonify({"data": extracted_data}), 200
     except Exception as e:
