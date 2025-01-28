@@ -7,7 +7,10 @@ import { CaseRentsForm } from "./components/CaseRentsForm/CaseRentsForm";
 import { Protocolist } from "./components/Protocolist/Protocolist";
 import { CaseRentsFinished } from "./components/CaseRentsFinished/CaseRentsFinished";
 import { Registration } from "./components/accounting/Registration/Registration";
-
+import { CreateArchivo } from "./components/archivo/CreateArchivo";
+import { LendBook } from "./components/archivo/LendBook";
+import { Reports } from "./components/archivo/Reports"
+import NotariaDetails from "./components/archivo/NotariaDetails";
 export const App = () => {
   return (
     <ConfigProvider
@@ -53,6 +56,10 @@ export const App = () => {
           <Route path="/Protocolist" element={<Protocolist />} />
           <Route path="/CaseRentsFinished" element={<CaseRentsFinished />} />
           <Route path="/Registration" element={<Registration />} />
+          <Route path="/CreateArchivo" element={<CreateArchivo />} />
+          <Route path="/LendBook" element={<LendBook />} />
+          <Route path="/Reports" element={<Reports />} />
+          <Route path="/id" element={<NotariaDetails />} />
         </Routes>
       </Router>
     </ConfigProvider>

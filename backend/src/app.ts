@@ -6,6 +6,9 @@ import protocolistRentsRoutes from './routes/protocolistRentsRoutes';
 import emailRoutes from './routes/emailRoutes';
 import caseRentsFinishedRoutes from "./routes/caseRentsFinishedRoutes";
 import pdfRoutes from "./routes/pdfRoutes";
+import createRecordRoutes from './routes/createRecordRoutes';
+import reportsRoutes from "./routes/reportsRoutes";
+import lendBookRoutes from './routes/lendBookRoutes';
 
 
 
@@ -25,6 +28,9 @@ app.use('/api', protocolistRentsRoutes);
 app.use('/api', emailRoutes);
 app.use("/api", caseRentsFinishedRoutes);
 app.use("/api/pdf", pdfRoutes);
+app.use('/api', createRecordRoutes);
+app.use("/api", reportsRoutes);
+app.use('/api', lendBookRoutes);
 
 // Servidor
 app.listen(PORT, () => {
