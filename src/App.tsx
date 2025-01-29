@@ -7,7 +7,8 @@ import { CaseRentsForm } from "./components/CaseRentsForm/CaseRentsForm";
 import { Protocolist } from "./components/Protocolist/Protocolist";
 import { CaseRentsFinished } from "./components/CaseRentsFinished/CaseRentsFinished";
 import { Registration } from "./components/accounting/Registration/Registration";
-
+import { Facturas } from "./components/rentasyregistro/Facturas";
+import { Data } from "./components/rentasyregistro/Data";
 export const App = () => {
   return (
     <ConfigProvider
@@ -53,6 +54,8 @@ export const App = () => {
           <Route path="/Protocolist" element={<Protocolist />} />
           <Route path="/CaseRentsFinished" element={<CaseRentsFinished />} />
           <Route path="/Registration" element={<Registration />} />
+          <Route path="/Facturas" element={<Facturas />} />
+          <Route path="/Data" element={<Data/>} />
         </Routes>
       </Router>
     </ConfigProvider>
