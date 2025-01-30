@@ -28,13 +28,13 @@ const menuItems = [
     ],
   },
   {
-    key: "3",
+    key: "4",
     icon: <FileSearchOutlined />,
     label: "Rentas y Registro",
     children: [
-      { key: "3.1", label: <a href="/Facturas">Facturas</a> },
-      { key: "3.2", label: <a href="/Data">data</a> },
-      { key: "3.3", label: "Campo disponible" },
+      { key: "4.1", label: <a href="/Facturas">Facturas</a> },
+      { key: "4.2", label: <a href="/Data">data</a> },
+      { key: "4.3", label: "Campo disponible" },
     ],
   }
 ];
