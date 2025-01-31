@@ -11,12 +11,17 @@ interface Facturas {
   estado: "cancelado" | "sin cancelar";
   fecha: string;
   escritura: number; // Añadimos 'escritura' en la interfaz
+  protocolista: string; // Nueva propiedad
+  total_factura: number; // Nueva propiedad
 }
-
-
+interface Protocolist {
+  id: number;
+  complete_name: string;
+  last_name: string;
+}
 // Función de ayuda para validar los datos de la factura
 const validarDatosFactura = (factura: Facturas, res: Response) => {
-  const { factura_numero, valor_rentas, valor_registro, metodo_pago, estado, fecha, escritura } = factura;
+  const { factura_numero, valor_rentas, valor_registro, metodo_pago, estado, fecha, escritura, protocolista, total_factura } = factura;
 
   // Validación de 'escritura' (asegurarse de que no sea nula ni inválida)
   if (!Number.isInteger(escritura) || escritura <= 0) {
@@ -53,6 +58,16 @@ const validarDatosFactura = (factura: Facturas, res: Response) => {
     return res.status(400).json({ error: "La fecha es obligatoria y debe tener un formato válido (YYYY-MM-DD)." });
   }
 
+  // Validación de 'protocolista'
+  if (typeof protocolista !== "string" || protocolista.trim() === "") {
+    return res.status(400).json({ error: "El campo 'protocolista' es obligatorio y debe ser una cadena de texto." });
+  }
+
+  // Validación de 'total_factura'
+  if (typeof total_factura !== "number" || total_factura < 0) {
+    return res.status(400).json({ error: "El campo 'total_factura' debe ser un número no negativo." });
+  }
+
   return null; // No hay errores de validación
 };
 
@@ -66,8 +81,8 @@ router.post("/facturas", (req: Request, res: Response) => {
   if (errorValidacion) return errorValidacion;
 
   const consultaInsertarFactura = `
-    INSERT INTO facturas (factura, valor_rentas, valor_registro, metodo_pago, estado, fecha, escritura)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO facturas (factura, valor_rentas, valor_registro, metodo_pago, estado, fecha, escritura, protocolista, total_factura)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   db.run(
@@ -80,6 +95,8 @@ router.post("/facturas", (req: Request, res: Response) => {
       factura.estado,
       factura.fecha,
       factura.escritura,        // Aquí se pasa el valor de 'escritura'
+      factura.protocolista,     // Aquí se pasa el valor de 'protocolista'
+      factura.total_factura,    // Aquí se pasa el valor de 'total_factura'
     ],
     function (err) {
       if (err) {
@@ -128,7 +145,7 @@ router.put("/facturas/:id", (req: Request, res: Response) => {
 
   const consultaActualizar = `
     UPDATE facturas
-    SET factura = ?, valor_rentas = ?, valor_registro = ?, metodo_pago = ?, estado = ?, fecha = ?, escritura = ?
+    SET factura = ?, valor_rentas = ?, valor_registro = ?, metodo_pago = ?, estado = ?, fecha = ?, escritura = ?, protocolista = ?, total_factura = ?
     WHERE id = ?
   `;
 
@@ -142,6 +159,8 @@ router.put("/facturas/:id", (req: Request, res: Response) => {
       factura.estado,
       factura.fecha,
       factura.escritura,        // Aquí se pasa el valor de 'escritura'
+      factura.protocolista,     // Aquí se pasa el valor de 'protocolista'
+      factura.total_factura,    // Aquí se pasa el valor de 'total_factura'
       id,
     ],
     function (err) {
@@ -173,4 +192,40 @@ router.delete("/facturas/:id", (req: Request, res: Response) => {
   });
 });
 
+// Obtener todos los protocolistas y actualizar casos activos
+router.get('/protocolistas', (req, res) => {
+  
+    const selectQuery = `
+      SELECT
+          id,
+          complete_name,
+          last_name
+      FROM protocolist_rents
+    `;
+
+    db.all<Protocolist[]>(selectQuery, [], (err, rows) => {
+      if (err) {
+        console.error('Error al obtener los protocolistas:', err.message);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+      res.json(rows);
+    });
+  });
+
+// Obtener la columna 'escritura' filtrando por 'protocolista'
+router.get('/escrituras/:id', (req, res) => {
+  const { id } = req.params;
+  const query = 'select  escritura  from case_rents where protocolista = ?';
+
+  db.all(query, [id], (error, results) => {
+      if (error) {
+          console.error('Error en la consulta:', error);
+          return res.status(500).json({ error: 'Error en la consulta' });
+      }
+      res.json(results);
+  });
+});
+
+
+ 
 export default router;

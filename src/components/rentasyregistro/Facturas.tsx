@@ -14,6 +14,7 @@ import {
   Col,
   notification,
   Modal,
+  AutoComplete,
   Select,
 } from "antd";
 import { Sidebar } from "../Sidebar/Sidebar";
@@ -22,15 +23,13 @@ import { Header } from "../Header/Header";
 const { Content, Sider } = Layout;
 const { Title } = Typography;
 
-// formatiamos los valores a moneda local
 const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat("es-CO", {
-      style: "currency",
-      currency: "COP",
-    }).format(value);
-  };
-  
-// Opciones de metodo de pago y estado
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+  }).format(value);
+};
+
 const metodoPagoOptions = [
   { label: "PSE", value: "pse" },
   { label: "Efectivo", value: "efectivo" },
@@ -43,16 +42,23 @@ const estadoOptions = [
 
 interface FacturasData {
   id: number;
-  factura: number;  // Ajustamos aquí para usar 'factura'
+  factura: number;
   valor_rentas: number;
   valor_registro: number;
   metodo_pago: "pse" | "efectivo";
   estado: "cancelado" | "sin cancelar";
   fecha: string;
   escritura: number;
+  protocolista: string;
+  total_factura: number;
 }
 
-  
+interface Protocolista {
+  id: number;
+  complete_name: string;
+  last_name: string;
+}
+
 export const Facturas: React.FC = () => {
   const [form] = Form.useForm();
   const [modalForm] = Form.useForm();
@@ -60,46 +66,56 @@ export const Facturas: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingFactura, setEditingFactura] = useState<FacturasData | null>(null);
+  const [protocolistasOptions, setProtocolistasOptions] = useState<{ value: string; label: string; id: number }[]>([]);
+
+  useEffect(() => {
+    fetchProtocolistas();
+    fetchData();
+  }, []);
+
+  const fetchProtocolistas = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get<Protocolista[]>("http://localhost:5000/api/protocolistas");
+      const protocolistas = response.data.map((item) => ({
+        value: `${item.complete_name} ${item.last_name}`,
+        label: `${item.complete_name} ${item.last_name}`,
+        id: item.id,
+      }));
+      setProtocolistasOptions(protocolistas);
+    } catch (error) {
+      console.error("Error fetching protocolistas:", error);
+    }
+    setLoading(false);
+  };
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const response = await axios.get<FacturasData[]>("http://localhost:5000/api/facturas");
-      console.log(response.data); // Verifica que los datos están llegando correctamente
       setTableData(response.data);
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        notification.error({
-          message: "Error al cargar datos",
-          description: error.message || "No se pudo cargar la lista de facturas.",
-        });
-      } else {
-        notification.error({
-          message: "Error al cargar datos",
-          description: "Ocurrió un error desconocido.",
-        });
-      }
+    } catch (error) {
+      notification.error({
+        message: "Error al cargar datos",
+        description: "No se pudo cargar la lista de facturas.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   const handleSubmit = async (values: FacturasData) => {
-    // Convertir valores numéricos antes de enviarlos
     const formattedValues = {
       ...values,
-      factura_numero: Number(values.factura), // Asegúrate de que 'factura' esté correctamente formateado
+      factura_numero: Number(values.factura),
       valor_rentas: Number(values.valor_rentas),
       valor_registro: Number(values.valor_registro),
       escritura: Number(values.escritura),
-      fecha: values.fecha, // La fecha puede ser un string en el formato adecuado
+      fecha: values.fecha,
+      protocolista: values.protocolista,
+      total_factura: Number(values.total_factura),
     };
 
-    console.log(formattedValues); // Verifica los valores que se están enviando
     try {
       await axios.post("http://localhost:5000/api/facturas", formattedValues);
       notification.success({
@@ -108,8 +124,7 @@ export const Facturas: React.FC = () => {
       });
       form.resetFields();
       fetchData();
-    } catch (error) {
-      console.error(error); // Verifica si hay errores
+    } catch {
       notification.error({
         message: "Error",
         description: "No se pudo agregar la factura.",
@@ -146,7 +161,6 @@ export const Facturas: React.FC = () => {
   };
 
   const updateFactura = async (values: Partial<FacturasData>) => {
-    // Convertir valores numéricos antes de enviarlos
     const formattedValues = {
       ...values,
       factura_numero: Number(values.factura),
@@ -154,6 +168,8 @@ export const Facturas: React.FC = () => {
       valor_registro: Number(values.valor_registro),
       escritura: Number(values.escritura),
       fecha: values.fecha,
+      protocolista: values.protocolista,
+      total_factura: Number(values.total_factura),
     };
 
     try {
@@ -179,23 +195,62 @@ export const Facturas: React.FC = () => {
 
   const tableColumns = [
     { title: "Id", dataIndex: "id", key: "id" },
-    { title: "Número de Factura", dataIndex: "factura", key: "factura" },
     { 
-      title: "Valor de Rentas", 
-      dataIndex: "valor_rentas", 
-      key: "valor_rentas", 
-      render: (value: number) => formatCurrency(value),  // Formatear valor
+      title: "Número de Factura", 
+      dataIndex: "factura", 
+      key: "factura", 
+      filterSearch: true,
+      onFilter: (value: any, record: any) => record.factura.toString().includes(value), // Filtro de búsqueda por número de factura
+      filters: tableData.map(factura => ({ text: factura.factura.toString(), value: factura.factura.toString() })),
+    },
+    {
+      title: "Valor de Rentas",
+      dataIndex: "valor_rentas",
+      key: "valor_rentas",
+      render: (value: number) => formatCurrency(value),
+    },
+    {
+      title: "Valor de Registro",
+      dataIndex: "valor_registro",
+      key: "valor_registro",
+      render: (value: number) => formatCurrency(value),
     },
     { 
-      title: "Valor de Registro", 
-      dataIndex: "valor_registro", 
-      key: "valor_registro", 
-      render: (value: number) => formatCurrency(value),  // Formatear valor
+      title: "Método de Pago", 
+      dataIndex: "metodo_pago", 
+      key: "metodo_pago",
+      filters: metodoPagoOptions.map(option => ({ text: option.label, value: option.value })), // Filtro por método de pago
+      onFilter: (value: any, record: any) => record.metodo_pago.includes(value), 
     },
-    { title: "Método de Pago", dataIndex: "metodo_pago", key: "metodo_pago" },
-    { title: "Estado", dataIndex: "estado", key: "estado" },
-    { title: "Fecha", dataIndex: "fecha", key: "fecha" },
-    { title: "Escritura", dataIndex: "escritura", key: "escritura" },
+    { 
+      title: "Estado", 
+      dataIndex: "estado", 
+      key: "estado",
+      filters: estadoOptions.map(option => ({ text: option.label, value: option.value })), // Filtro por estado
+      onFilter: (value: any, record: any) => record.estado.includes(value),
+    },
+    {
+      title: "Escritura",
+      dataIndex: "escritura",
+      key: "escritura",
+      filterSearch: true,
+      onFilter: (value: any, record: any) => record.escritura.toString().includes(value),
+      filters: tableData.map(escritura => ({ text: escritura.escritura.toString(), value: escritura.escritura.toString() })),
+    },
+    {
+      title: "Protocolista",
+      dataIndex: "protocolista",
+      key: "protocolista",
+      filterSearch: true,
+      onFilter: (value: any, record: any) => record.protocolista.toLowerCase().includes(value.toLowerCase()),
+      filters: Array.from(new Set(tableData.map(protocolista => protocolista.protocolista))).map(protocolista => ({ text: protocolista, value: protocolista })),
+    },
+    {
+      title: "Total Factura",
+      dataIndex: "total_factura",
+      key: "total_factura",
+      render: (value: number) => formatCurrency(value),
+    },
     {
       title: "Acciones",
       key: "actions",
@@ -211,7 +266,6 @@ export const Facturas: React.FC = () => {
       ),
     },
   ];
-  
 
   const handleModalFinish = (values: Partial<FacturasData>) => {
     updateFactura(values);
@@ -230,6 +284,42 @@ export const Facturas: React.FC = () => {
             <Breadcrumb.Item>Facturas</Breadcrumb.Item>
           </Breadcrumb>
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <Card className="card-glass" title={<Title level={5}>Información Ecrituracion</Title>}>
+              <Form form={form} layout="vertical">
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Escritura"
+                      name="escritura"
+                      rules={[{ required: true, message: "Ingrese el número de escritura" }]}
+                    >
+                      <Input type="number" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Protocolista"
+                      name="protocolista"
+                      rules={[{ required: true, message: "Seleccione un protocolista" }]}
+                    >
+                      <AutoComplete
+                        options={protocolistasOptions}
+                        style={{ width: "100%" }}
+                        onSelect={(value) => {
+                          form.setFieldsValue({ protocolista: value });
+                        }}
+                        placeholder="Seleccione un protocolista"
+                        filterOption={(inputValue, option) =>
+                          option!.label.toLowerCase().includes(inputValue.toLowerCase())
+                        }
+                        notFoundContent={loading ? "Cargando..." : "No se encontraron resultados"}
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </Form>
+            </Card>
+
             <Card className="card-glass" title={<Title level={5}>Crear nueva factura</Title>}>
               <Form form={form} layout="vertical" onFinish={handleSubmit}>
                 <Row gutter={16}>
@@ -292,13 +382,17 @@ export const Facturas: React.FC = () => {
                     </Form.Item>
                   </Col>
                 </Row>
-                <Form.Item
-                  label="Escritura"
-                  name="escritura"
-                  rules={[{ required: true, message: "Ingrese el número de escritura" }]}
-                >
-                  <Input type="number" />
-                </Form.Item>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      label="Total Factura"
+                      name="total_factura"
+                      rules={[{ required: true, message: "Ingrese el total de la factura" }]}
+                    >
+                      <Input type="number" />
+                    </Form.Item>
+                  </Col>
+                </Row>
                 <Form.Item>
                   <Button type="primary" htmlType="submit">
                     Crear Factura
@@ -368,15 +462,15 @@ export const Facturas: React.FC = () => {
                 <Input type="date" />
               </Form.Item>
               <Form.Item
-                label="Escritura"
-                name="escritura"
-                rules={[{ required: true, message: "Ingrese el número de escritura" }]}
+                label="Total Factura"
+                name="total_factura"
+                rules={[{ required: true, message: "Ingrese el total de la factura" }]}
               >
                 <Input type="number" />
               </Form.Item>
               <Form.Item>
                 <Button type="primary" htmlType="submit">
-                  Guardar Cambios
+                  Actualizar Factura
                 </Button>
               </Form.Item>
             </Form>
