@@ -8,7 +8,9 @@ import caseRentsFinishedRoutes from "./routes/caseRentsFinishedRoutes";
 import pdfRoutes from "./routes/pdfRoutes";
 import facturasRoutes from "./routes/facturasRoutes"
 import rentasyregistroRoutes from "./routes/rentasyregistroRoutes"
-
+import createRecordRoutes from './routes/createRecordRoutes'
+import reportsRoutes from "./routes/reportRoutes"
+import lendBookRoutes from './routes/lendBookRoutes';
 
 const app = express();
 const PORT = 5000;
@@ -27,6 +29,9 @@ app.use("/api", caseRentsFinishedRoutes);
 app.use("/api/pdf", pdfRoutes);
 app.use('/api', facturasRoutes);
 app.use('/api', rentasyregistroRoutes);
+app.use('/api', createRecordRoutes);
+app.use("/api", reportsRoutes);
+app.use('/api', lendBookRoutes);
 // Servidor
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);

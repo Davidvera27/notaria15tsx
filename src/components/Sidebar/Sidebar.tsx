@@ -3,6 +3,7 @@ import {
   DatabaseOutlined,
   UserOutlined,
   FileSearchOutlined,
+  FileAddOutlined,
 } from "@ant-design/icons";
 import { Menu } from "antd";
 
@@ -36,7 +37,17 @@ const menuItems = [
       { key: "4.2", label: <a href="/Data">data</a> },
       { key: "4.3", label: "Campo disponible" },
     ],
-  }
+  },
+  {
+    key: "5",
+    icon: <FileAddOutlined />,
+    label: "Archivo",
+    children: [
+      { key: "5.1", label: <a href="/CreateArchivo">Crear Archivo</a>},
+      { key: "5.2", label: <a href="/LendBook">Préstamos</a>},
+      { key: "5.3", label: <a href="/Reports">Informes</a>},
+    ],
+  },
 ];
 
 export const Sidebar = () => (
